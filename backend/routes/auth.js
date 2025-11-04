@@ -8,6 +8,11 @@ const router = express.Router();
 // Log per debug
 console.log('🔧 Auth router inizializzato');
 
+// Test route GET per verificare che il router funzioni
+router.get('/test', (req, res) => {
+    res.json({ message: 'Auth router funziona!', path: req.path });
+});
+
 // Registrazione nuovo utente
 router.post('/register', async (req, res) => {
     try {
