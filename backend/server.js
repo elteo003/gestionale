@@ -25,8 +25,21 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Health check endpoint
-app.get('/health', (req, res) => {
-    res.json({ status: 'OK', timestamp: new Date().toISOString() });
+app.get('/health', async (req, res) => {
+    let dbStatus = 'ok';
+    try {
+        // Test connessione database
+        await pool.query('SELECT 1');
+    } catch (error) {
+        console.error('Health check DB error:', error);
+        dbStatus = 'error';
+    }
+    
+    res.json({ 
+        status: 'OK', 
+        db: dbStatus,
+        timestamp: new Date().toISOString() 
+    });
 });
 
 // API Routes

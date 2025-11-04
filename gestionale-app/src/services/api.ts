@@ -7,8 +7,17 @@ if (import.meta.env.DEV) {
     console.log('🔗 API URL configurato:', API_URL || 'NON CONFIGURATO ⚠️');
 }
 
+// Funzione per verificare se usare mock data
+function shouldUseMockData(): boolean {
+    return localStorage.getItem('useMockData') === 'true';
+}
+
 // Funzione helper per le chiamate API
 async function apiCall(endpoint: string, options: RequestInit = {}): Promise<any> {
+    // Se mock data è attivo, restituisci dati finti
+    if (shouldUseMockData()) {
+        return getMockData(endpoint, options);
+    }
     const token = localStorage.getItem('token');
     const fullUrl = `${API_URL}${endpoint}`;
     
@@ -137,6 +146,11 @@ export const projectsAPI = {
         apiCall(`/api/projects/${projectId}/todos/${todoId}/toggle`, {
             method: 'PATCH',
         }),
+    updateTodoStatus: (projectId: string, todoId: string, data: any) =>
+        apiCall(`/api/projects/${projectId}/todos/${todoId}/status`, {
+            method: 'PATCH',
+            body: JSON.stringify(data),
+        }),
     deleteTodo: (projectId: string, todoId: string) =>
         apiCall(`/api/projects/${projectId}/todos/${todoId}`, {
             method: 'DELETE',
@@ -207,5 +221,56 @@ export const eventsAPI = {
 export const usersAPI = {
     getAll: () => apiCall('/api/users'),
     getById: (id: string) => apiCall(`/api/users/${id}`),
+    getOnline: () => apiCall('/api/users/online'),
+    create: (userData: any) =>
+        apiCall('/api/users', {
+            method: 'POST',
+            body: JSON.stringify(userData),
+        }),
+    update: (id: string, userData: any) =>
+        apiCall(`/api/users/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(userData),
+        }),
+    resetPassword: (id: string, newPassword: string) =>
+        apiCall(`/api/users/${id}/reset-password`, {
+            method: 'PATCH',
+            body: JSON.stringify({ newPassword }),
+        }),
+    updateStatus: (id: string, isActive: boolean) =>
+        apiCall(`/api/users/${id}/status`, {
+            method: 'PATCH',
+            body: JSON.stringify({ isActive }),
+        }),
 };
+
+// Funzione per generare mock data in base all'endpoint
+function getMockData(endpoint: string, options: RequestInit = {}): Promise<any> {
+    // Simula un delay di rete
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            if (endpoint === '/api/users' && options.method !== 'POST') {
+                resolve([
+                    { id: '1', name: 'Admin Test', email: 'admin@test.com', area: 'IT', role: 'Admin', is_active: true },
+                    { id: '2', name: 'User Test', email: 'user@test.com', area: 'Marketing', role: 'Socio', is_active: true },
+                ]);
+            } else if (endpoint === '/api/users/online') {
+                resolve([
+                    { id: '1', name: 'Admin Test', email: 'admin@test.com', area: 'IT', role: 'Admin', last_seen: new Date().toISOString() },
+                ]);
+            } else if (endpoint.startsWith('/api/users') && options.method === 'POST') {
+                const body = JSON.parse(options.body as string);
+                resolve({ id: Date.now().toString(), ...body, is_active: true, created_at: new Date().toISOString() });
+            } else if (endpoint.startsWith('/api/users') && options.method === 'PUT') {
+                const body = JSON.parse(options.body as string);
+                resolve({ id: endpoint.split('/')[3], ...body });
+            } else if (endpoint.includes('/reset-password') || endpoint.includes('/status')) {
+                resolve({ message: 'Operazione completata (Mock)' });
+            } else {
+                // Per altri endpoint, restituisci array vuoto o oggetto vuoto
+                resolve(Array.isArray(endpoint) ? [] : {});
+            }
+        }, 300); // Simula 300ms di delay
+    });
+}
 

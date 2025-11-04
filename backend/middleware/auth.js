@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import pool from '../database/connection.js';
 
 export const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
@@ -13,6 +14,13 @@ export const authenticateToken = (req, res, next) => {
             return res.status(403).json({ error: 'Token non valido o scaduto' });
         }
         req.user = user;
+        
+        // Aggiorna last_seen in modo asincrono (non blocca la risposta)
+        if (user.userId) {
+            pool.query('UPDATE users SET last_seen = NOW() WHERE user_id = $1', [user.userId])
+                .catch(err => console.error('Errore aggiornamento last_seen:', err));
+        }
+        
         next();
     });
 };

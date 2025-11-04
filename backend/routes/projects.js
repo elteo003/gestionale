@@ -233,6 +233,44 @@ router.patch('/:projectId/todos/:todoId/toggle', async (req, res) => {
     }
 });
 
+// PATCH /api/projects/:projectId/todos/:todoId/status - Aggiorna stato del todo
+router.patch('/:projectId/todos/:todoId/status', async (req, res) => {
+    try {
+        const { projectId, todoId } = req.params;
+        const { status, completed } = req.body;
+
+        // Mappa lo status italiano a completed
+        let completedValue = completed;
+        if (status === 'terminato') {
+            completedValue = true;
+        } else if (status === 'da fare') {
+            completedValue = false;
+        }
+        // Per "in corso", manteniamo il valore di completed se fornito
+
+        const result = await pool.query(
+            `UPDATE todos
+             SET completed = $1, updated_at = CURRENT_TIMESTAMP
+             WHERE todo_id = $2 AND project_id = $3
+             RETURNING todo_id as id, text, completed, priority, created_at as "createdAt"`,
+            [completedValue !== undefined ? completedValue : false, todoId, projectId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Todo non trovato' });
+        }
+
+        // Aggiungi status al risultato per il frontend
+        const todo = result.rows[0];
+        todo.status = status || (todo.completed ? 'terminato' : 'da fare');
+
+        res.json(todo);
+    } catch (error) {
+        console.error('Errore aggiornamento stato todo:', error);
+        res.status(500).json({ error: 'Errore interno del server' });
+    }
+});
+
 // DELETE /api/projects/:projectId/todos/:todoId - Elimina todo
 router.delete('/:projectId/todos/:todoId', async (req, res) => {
     try {

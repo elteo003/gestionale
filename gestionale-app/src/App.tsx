@@ -15,11 +15,14 @@ import {
     Flag,
     LogOut,
     User,
-    CalendarIcon
+    CalendarIcon,
+    Settings
 } from 'lucide-react';
 import Login from './components/Login';
 import Calendar from './components/Calendar';
-import { clientsAPI, projectsAPI, contractsAPI, authAPI } from './services/api.ts';
+import AdminPanel from './components/AdminPanel';
+import { DashboardRole } from './components/DashboardRole';
+import { clientsAPI, projectsAPI, contractsAPI, authAPI, usersAPI, eventsAPI } from './services/api.ts';
 
 // --- Costanti per le Opzioni ---
 const CLIENT_STATUS_OPTIONS = ['Prospect', 'In Contatto', 'In Negoziazione', 'Attivo', 'Chiuso', 'Perso'];
@@ -38,6 +41,8 @@ export default function App() {
     const [clients, setClients] = useState<any[]>([]);
     const [projects, setProjects] = useState<any[]>([]);
     const [contracts, setContracts] = useState<any[]>([]);
+    const [users, setUsers] = useState<any[]>([]);
+    const [events, setEvents] = useState<any[]>([]);
 
     const [activeView, setActiveView] = useState('dashboard');
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -71,14 +76,18 @@ export default function App() {
     // Carica dati dal backend
     const loadData = async () => {
         try {
-            const [clientsData, projectsData, contractsData] = await Promise.all([
+            const [clientsData, projectsData, contractsData, usersData, eventsData] = await Promise.all([
                 clientsAPI.getAll(),
                 projectsAPI.getAll(),
                 contractsAPI.getAll(),
+                usersAPI.getAll().catch(() => []), // Fallback se non disponibile
+                eventsAPI.getAll().catch(() => []), // Fallback se non disponibile
             ]);
             setClients(clientsData);
             setProjects(projectsData);
             setContracts(contractsData);
+            setUsers(usersData);
+            setEvents(eventsData);
         } catch (error) {
             console.error('Errore nel caricamento dei dati:', error);
         }
@@ -195,6 +204,28 @@ export default function App() {
         }
     };
 
+    const updateTodoStatus = async (projectId: string, todoId: string, status: string) => {
+        try {
+            // Mappa gli stati italiani a completed
+            const completed = status === 'terminato';
+            const inProgress = status === 'in corso';
+            
+            // Se è "terminato", imposta completed = true
+            // Se è "da fare", imposta completed = false
+            // Per "in corso", usiamo una logica: se non è né terminato né da fare, è in corso
+            // Per ora usiamo toggleTodo se è terminato/da fare, altrimenti aggiungiamo un campo custom
+            const updated = await projectsAPI.updateTodoStatus(projectId, todoId, { status, completed });
+            setProjects(projects.map(p =>
+                p.id === projectId ? {
+                    ...p,
+                    todos: p.todos.map((t: any) => t.id === todoId ? { ...updated, status } : t)
+                } : p
+            ));
+        } catch (error: any) {
+            alert(error.message || 'Errore nell\'aggiornamento dello stato del todo');
+        }
+    };
+
     const deleteTodo = async (projectId: string, todoId: string) => {
         try {
             await projectsAPI.deleteTodo(projectId, todoId);
@@ -243,20 +274,39 @@ export default function App() {
 
     // --- Funzioni Modale ---
     const openModal = (type: string) => {
+        console.log('Opening modal:', type, { clients: clients?.length, projects: projects?.length });
         let content;
-        switch (type) {
-            case 'client':
-                content = <AddClientForm onSubmit={addClient} />;
-                break;
-            case 'project':
-                content = <AddProjectForm clients={clients} onSubmit={addProject} />;
-                break;
-            case 'contract':
-                content = <AddContractForm clients={clients} projects={projects} onSubmit={addContract} />;
-                break;
-            default:
-                content = null;
+        try {
+            switch (type) {
+                case 'client':
+                    content = <AddClientForm onSubmit={addClient} />;
+                    break;
+                case 'project':
+                    // Assicurati che clients sia sempre un array
+                    const clientsArray = Array.isArray(clients) ? clients : [];
+                    console.log('Creating AddProjectForm with clients:', clientsArray.length);
+                    content = <AddProjectForm clients={clientsArray} onSubmit={addProject} />;
+                    break;
+                case 'contract':
+                    // Assicurati che clients e projects siano sempre array
+                    const clientsArr = Array.isArray(clients) ? clients : [];
+                    const projectsArr = Array.isArray(projects) ? projects : [];
+                    console.log('Creating AddContractForm with clients:', clientsArr.length, 'projects:', projectsArr.length);
+                    content = <AddContractForm 
+                        clients={clientsArr} 
+                        projects={projectsArr} 
+                        onSubmit={addContract} 
+                    />;
+                    break;
+                default:
+                    console.warn('Unknown modal type:', type);
+                    content = <div className="p-4 text-red-600">Tipo di form sconosciuto: {type}</div>;
+            }
+        } catch (error) {
+            console.error('Errore nella creazione del form:', error);
+            content = <div className="p-4 text-red-600">Errore nel caricamento del form: {error instanceof Error ? error.message : 'Errore sconosciuto'}</div>;
         }
+        console.log('Modal content created:', content ? 'OK' : 'NULL');
         setModalContent(content);
         setIsModalOpen(true);
     };
@@ -314,11 +364,14 @@ export default function App() {
                         clients={clients}
                         projects={projects}
                         contracts={contracts}
+                        users={users}
+                        events={events}
                         onUpdateClientStatus={updateClientStatus}
                         onUpdateProjectStatus={updateProjectStatus}
                         onUpdateContractStatus={updateContractStatus}
                         onAddTodo={addTodoToProject}
                         onToggleTodo={toggleTodo}
+                        onUpdateTodoStatus={updateTodoStatus}
                         onDeleteTodo={deleteTodo}
                         onDeleteClient={deleteClient}
                         onDeleteProject={deleteProject}
@@ -331,7 +384,7 @@ export default function App() {
 
             {/* Modale */}
             <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
-                {modalContent}
+                {modalContent || <div className="p-4 text-gray-600">Caricamento form...</div>}
             </Modal>
         </div>
     );
@@ -340,12 +393,15 @@ export default function App() {
 // --- Componenti UI ---
 
 function Sidebar({ activeView, setActiveView, user, onLogout, className = '', onNavigate }: any) {
+    const isAdmin = user?.role === 'Admin' || user?.role === 'IT' || user?.role === 'Responsabile';
+    
     const navItems = [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { id: 'clienti', label: 'Clienti', icon: Users },
         { id: 'progetti', label: 'Progetti', icon: Briefcase },
         { id: 'contabilita', label: 'Contabilità', icon: FileText },
         { id: 'calendario', label: 'Calendario', icon: CalendarIcon },
+        ...(isAdmin ? [{ id: 'amministrazione', label: 'Amministrazione', icon: Settings }] : []),
     ];
 
     const handleClick = (view: string) => {
@@ -401,6 +457,7 @@ function Header({ onAddNewClick, activeView }: any) {
             case 'progetti': return 'Gestione Progetti';
             case 'contabilita': return 'Gestione Contabilità';
             case 'calendario': return 'Calendario Eventi';
+            case 'amministrazione': return 'Pannello Amministrazione';
             default: return 'Gestionale';
         }
     };
@@ -414,8 +471,17 @@ function Header({ onAddNewClick, activeView }: any) {
         }
     };
 
+    const getModalType = () => {
+        switch (activeView) {
+            case 'clienti': return 'client';
+            case 'progetti': return 'project';
+            case 'contabilita': return 'contract';
+            default: return null;
+        }
+    };
+
     const buttonLabel = getButtonLabel();
-    const modalType = activeView.slice(0, -1);
+    const modalType = getModalType();
 
     return (
         <header className="h-16 bg-white shadow-md flex-shrink-0">
@@ -438,7 +504,7 @@ function Header({ onAddNewClick, activeView }: any) {
 function RenderContent({ activeView, user, ...props }: any) {
     switch (activeView) {
         case 'dashboard':
-            return <Dashboard {...props} />;
+            return <Dashboard user={user} {...props} />;
         case 'clienti':
             return <ClientiList {...props} />;
         case 'progetti':
@@ -447,6 +513,8 @@ function RenderContent({ activeView, user, ...props }: any) {
             return <ContabilitaList {...props} />;
         case 'calendario':
             return <Calendar currentUser={user || null} />;
+        case 'amministrazione':
+            return <AdminPanel user={user} />;
         default:
             return <div>Seleziona una vista</div>;
     }
@@ -461,12 +529,12 @@ function Modal({ isOpen, onClose, children }: any) {
             <div className="relative bg-white rounded-lg shadow-xl w-full max-w-lg m-4 max-h-[90vh] overflow-y-auto">
                 <button
                     onClick={onClose}
-                    className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
+                    className="absolute top-3 right-3 z-10 text-gray-400 hover:text-gray-600"
                 >
                     <X className="w-6 h-6" />
                 </button>
                 <div className="p-6">
-                    {children}
+                    {children || <div className="p-4 text-red-600">Errore: contenuto non disponibile</div>}
                 </div>
             </div>
         </div>
@@ -475,21 +543,8 @@ function Modal({ isOpen, onClose, children }: any) {
 
 // --- Componenti di Pagina ---
 
-function Dashboard({ clients, projects, contracts }: any) {
-    const activeProjects = projects.filter((p: any) => p.status === 'In Corso').length;
-    const newProspects = clients.filter((c: any) => c.status === 'Prospect').length;
-    const dueInvoices = contracts.filter((c: any) => c.type === 'Fattura' && c.status === 'Inviata').length;
-
-    return (
-        <div>
-            <h3 className="text-xl font-semibold mb-4">Panoramica</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <StatCard title="Progetti Attivi" value={activeProjects} icon={Briefcase} color="blue" />
-                <StatCard title="Nuovi Prospect" value={newProspects} icon={Users} color="green" />
-                <StatCard title="Fatture da Incassare" value={dueInvoices} icon={FileText} color="orange" />
-            </div>
-        </div>
-    );
+function Dashboard({ user, clients, projects, contracts, users, events }: any) {
+    return <DashboardRole user={user} clients={clients} projects={projects} contracts={contracts} users={users} events={events} />;
 }
 
 function StatCard({ title, value, icon: Icon, color }: any) {
@@ -563,7 +618,7 @@ function ClientiList({ clients, onUpdateClientStatus, onDeleteClient }: any) {
     );
 }
 
-function ProgettiList({ projects, onUpdateProjectStatus, onAddTodo, onToggleTodo, onDeleteTodo, onDeleteProject, getClientName }: any) {
+function ProgettiList({ projects, onUpdateProjectStatus, onAddTodo, onToggleTodo, onUpdateTodoStatus, onDeleteTodo, onDeleteProject, getClientName }: any) {
     return (
         <div className="space-y-6">
             {projects.map((project: any) => (
@@ -574,6 +629,7 @@ function ProgettiList({ projects, onUpdateProjectStatus, onAddTodo, onToggleTodo
                     onUpdateProjectStatus={onUpdateProjectStatus}
                     onAddTodo={onAddTodo}
                     onToggleTodo={onToggleTodo}
+                    onUpdateTodoStatus={onUpdateTodoStatus}
                     onDeleteTodo={onDeleteTodo}
                     onDeleteProject={onDeleteProject}
                 />
@@ -582,7 +638,7 @@ function ProgettiList({ projects, onUpdateProjectStatus, onAddTodo, onToggleTodo
     );
 }
 
-function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, onToggleTodo, onDeleteTodo, onDeleteProject }: any) {
+function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, onToggleTodo, onUpdateTodoStatus, onDeleteTodo, onDeleteProject }: any) {
     const [newTodoText, setNewTodoText] = useState('');
     const [newTodoPriority, setNewTodoPriority] = useState('Media');
     const [isExpanded, setIsExpanded] = useState(true);
@@ -633,7 +689,7 @@ function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, on
                             <TodoItem
                                 key={todo.id}
                                 todo={todo}
-                                onToggle={() => onToggleTodo(project.id, todo.id)}
+                                onStatusChange={(status: string) => onUpdateTodoStatus(project.id, todo.id, status)}
                                 onDelete={() => onDeleteTodo(project.id, todo.id)}
                             />
                         )) : (
@@ -669,29 +725,64 @@ function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, on
     );
 }
 
-function TodoItem({ todo, onToggle, onDelete }: any) {
-    const priorityColors: any = {
-        'Bassa': 'text-green-500',
-        'Media': 'text-yellow-500',
-        'Alta': 'text-red-500',
+function TodoItem({ todo, onStatusChange, onDelete }: any) {
+    // Determina lo stato corrente dal todo
+    // Se ha un campo status, usalo, altrimenti deriva da completed
+    const getCurrentStatus = () => {
+        if (todo.status) return todo.status;
+        if (todo.completed) return 'terminato';
+        // Se non è completato e non ha status, potrebbe essere "in corso" o "da fare"
+        // Per ora assumiamo "da fare"
+        return 'da fare';
     };
 
+    const currentStatus = getCurrentStatus();
+    
+    const statusOptions = [
+        { value: 'da fare', label: 'Da Fare', color: 'bg-red-100 text-red-700 border-red-300' },
+        { value: 'in corso', label: 'In Corso', color: 'bg-yellow-100 text-yellow-700 border-yellow-300' },
+        { value: 'terminato', label: 'Terminato', color: 'bg-green-100 text-green-700 border-green-300' },
+    ];
+
+    const priorityColors: any = {
+        'Bassa': { bg: 'bg-green-100', text: 'text-green-700', border: 'border-green-300' },
+        'Media': { bg: 'bg-yellow-100', text: 'text-yellow-700', border: 'border-yellow-300' },
+        'Alta': { bg: 'bg-red-100', text: 'text-red-700', border: 'border-red-300' },
+    };
+
+    const currentStatusConfig = statusOptions.find(s => s.value === currentStatus) || statusOptions[0];
+    const priorityConfig = priorityColors[todo.priority] || priorityColors['Media'];
+
     return (
-        <div className="flex items-center justify-between p-2 rounded-md hover:bg-gray-50">
-            <div className="flex items-center space-x-3">
-                <button onClick={onToggle}>
-                    {todo.completed
-                        ? <CheckCircle className="w-5 h-5 text-green-500" />
-                        : <Circle className="w-5 h-5 text-gray-400" />
-                    }
-                </button>
-                <span className={`${todo.completed ? 'line-through text-gray-500' : 'text-gray-800'}`}>
-                    {todo.text}
+        <div className="flex items-center justify-between p-3 rounded-md hover:bg-gray-50 border border-gray-200">
+            <div className="flex items-center space-x-3 flex-1">
+                <span className="text-gray-800 flex-1">{todo.text}</span>
+                
+                {/* Badge Priorità - più visibile */}
+                <span className={`px-2 py-1 text-xs font-semibold rounded-full border ${priorityConfig.bg} ${priorityConfig.text} ${priorityConfig.border}`}>
+                    {todo.priority}
                 </span>
             </div>
+            
             <div className="flex items-center space-x-2">
-                <Flag className={`w-4 h-4 ${priorityColors[todo.priority]}`} />
-                <button onClick={onDelete} className="text-gray-400 hover:text-red-500">
+                {/* Selettore Stato */}
+                <select
+                    value={currentStatus}
+                    onChange={(e) => onStatusChange(e.target.value)}
+                    className={`px-3 py-1 text-sm font-medium rounded-md border ${currentStatusConfig.color} cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+                >
+                    {statusOptions.map(option => (
+                        <option key={option.value} value={option.value}>
+                            {option.label}
+                        </option>
+                    ))}
+                </select>
+                
+                <button 
+                    onClick={onDelete} 
+                    className="text-gray-400 hover:text-red-500 p-1 rounded transition-colors"
+                    title="Elimina"
+                >
                     <Trash2 className="w-4 h-4" />
                 </button>
             </div>
@@ -785,8 +876,20 @@ function AddClientForm({ onSubmit }: any) {
             <FormInput name="contactPerson" label="Referente" value={formData.contactPerson} onChange={handleChange} />
             <FormInput name="email" label="Email" type="email" value={formData.email} onChange={handleChange} required />
             <FormInput name="phone" label="Telefono" value={formData.phone} onChange={handleChange} />
-            <FormSelect name="area" label="Area di Competenza" value={formData.area} onChange={handleChange} options={AREA_OPTIONS} />
-            <FormSelect name="status" label="Stato Iniziale" value={formData.status} onChange={handleChange} options={CLIENT_STATUS_OPTIONS} />
+            <FormSelect 
+                name="area" 
+                label="Area di Competenza" 
+                value={formData.area} 
+                onChange={handleChange} 
+                options={AREA_OPTIONS.map(area => ({ value: area, label: area }))} 
+            />
+            <FormSelect 
+                name="status" 
+                label="Stato Iniziale" 
+                value={formData.status} 
+                onChange={handleChange} 
+                options={CLIENT_STATUS_OPTIONS.map(status => ({ value: status, label: status }))} 
+            />
             <div className="pt-4 flex justify-end">
                 <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg shadow-md hover:bg-indigo-700 transition-colors duration-200">
                     Salva Cliente
@@ -797,9 +900,15 @@ function AddClientForm({ onSubmit }: any) {
 }
 
 function AddProjectForm({ clients, onSubmit }: any) {
+    // Assicurati che clients sia sempre un array
+    const clientsList = Array.isArray(clients) ? clients : [];
+    const hasClients = clientsList.length > 0;
+
+    console.log('AddProjectForm rendering with clients:', clientsList.length);
+
     const [formData, setFormData] = useState({
         name: '',
-        clientId: clients[0]?.id || '',
+        clientId: hasClients ? clientsList[0]?.id || '' : '',
         area: 'IT',
         status: 'Pianificato',
     });
@@ -811,22 +920,95 @@ function AddProjectForm({ clients, onSubmit }: any) {
 
     const handleSubmit = (e: any) => {
         e.preventDefault();
-        if (formData.name && formData.clientId) {
-            onSubmit(formData);
-        } else {
-            alert('Nome progetto e cliente sono obbligatori.');
+        if (!formData.name) {
+            alert('Il nome del progetto è obbligatorio.');
+            return;
         }
+        if (!hasClients) {
+            alert('Devi prima creare almeno un cliente per poter creare un progetto.');
+            return;
+        }
+        if (!formData.clientId) {
+            alert('Seleziona un cliente.');
+            return;
+        }
+        onSubmit(formData);
     };
+
+    // Converti AREA_OPTIONS in formato per FormSelect
+    const areaOptions = AREA_OPTIONS.map(area => ({ value: area, label: area }));
+    const statusOptions = PROJECT_STATUS_OPTIONS.map(status => ({ value: status, label: status }));
+
+    // Debug: verifica che il componente si renderizzi
+    console.log('AddProjectForm render - formData:', formData, 'hasClients:', hasClients);
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <h3 className="text-lg font-medium leading-6 text-gray-900 mb-4">Aggiungi Nuovo Progetto</h3>
-            <FormInput name="name" label="Nome Progetto" value={formData.name} onChange={handleChange} required />
-            <FormSelect name="clientId" label="Cliente" value={formData.clientId} onChange={handleChange} options={clients.map((c: any) => ({ value: c.id, label: c.name }))} />
-            <FormSelect name="area" label="Area di Competenza" value={formData.area} onChange={handleChange} options={AREA_OPTIONS} />
-            <FormSelect name="status" label="Stato Iniziale" value={formData.status} onChange={handleChange} options={PROJECT_STATUS_OPTIONS} />
+            
+            <FormInput 
+                name="name" 
+                label="Nome Progetto" 
+                value={formData.name} 
+                onChange={handleChange} 
+                required 
+            />
+            
+            <div>
+                <label htmlFor="clientId" className="block text-sm font-medium text-gray-700">
+                    Cliente {!hasClients && <span className="text-red-500">*</span>}
+                </label>
+                {!hasClients ? (
+                    <div className="mt-1 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                        <p className="text-sm text-yellow-800">
+                            ⚠️ Nessun cliente presente. Crea prima un cliente nella sezione "Clienti".
+                        </p>
+                    </div>
+                ) : (
+                    <select
+                        id="clientId"
+                        name="clientId"
+                        value={formData.clientId}
+                        onChange={handleChange}
+                        required
+                        className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    >
+                        <option value="">Seleziona un cliente</option>
+                        {clientsList.map((c: any) => (
+                            <option key={c.id} value={c.id}>
+                                {c.name}
+                            </option>
+                        ))}
+                    </select>
+                )}
+            </div>
+            
+            <FormSelect 
+                name="area" 
+                label="Area di Competenza" 
+                value={formData.area} 
+                onChange={handleChange} 
+                options={areaOptions} 
+            />
+            
+            <FormSelect 
+                name="status" 
+                label="Stato Iniziale" 
+                value={formData.status} 
+                onChange={handleChange} 
+                options={statusOptions} 
+            />
+            
             <div className="pt-4 flex justify-end">
-                <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg shadow-md hover:bg-indigo-700 transition-colors duration-200">
+                <button 
+                    type="submit" 
+                    disabled={!hasClients}
+                    className={`px-4 py-2 rounded-lg shadow-md transition-colors duration-200 ${
+                        hasClients 
+                            ? 'bg-indigo-600 text-white hover:bg-indigo-700' 
+                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    }`}
+                >
                     Salva Progetto
                 </button>
             </div>
@@ -835,10 +1017,17 @@ function AddProjectForm({ clients, onSubmit }: any) {
 }
 
 function AddContractForm({ clients, projects, onSubmit }: any) {
+    // Assicurati che clients e projects siano sempre array
+    const clientsList = Array.isArray(clients) ? clients : [];
+    const projectsList = Array.isArray(projects) ? projects : [];
+    const hasClients = clientsList.length > 0;
+
+    console.log('AddContractForm rendering with clients:', clientsList.length, 'projects:', projectsList.length);
+
     const [formData, setFormData] = useState({
         type: 'Contratto',
-        clientId: clients[0]?.id || '',
-        projectId: projects[0]?.id || '',
+        clientId: hasClients ? clientsList[0]?.id || '' : '',
+        projectId: '',
         amount: 0,
         status: 'Bozza',
         date: new Date().toISOString().split('T')[0],
@@ -850,8 +1039,9 @@ function AddContractForm({ clients, projects, onSubmit }: any) {
     };
 
     const availableProjects = useMemo(() => {
-        return projects.filter((p: any) => p.clientId === formData.clientId);
-    }, [formData.clientId, projects]);
+        if (!formData.clientId) return [];
+        return projectsList.filter((p: any) => p.clientId === formData.clientId);
+    }, [formData.clientId, projectsList]);
 
     useEffect(() => {
         if (availableProjects.length > 0 && !availableProjects.find((p: any) => p.id === formData.projectId)) {
@@ -863,24 +1053,111 @@ function AddContractForm({ clients, projects, onSubmit }: any) {
 
     const handleSubmit = (e: any) => {
         e.preventDefault();
-        if (formData.clientId && formData.amount > 0) {
-            onSubmit(formData);
-        } else {
-            alert('Cliente e importo sono obbligatori.');
+        if (!hasClients) {
+            alert('Devi prima creare almeno un cliente per poter creare un documento.');
+            return;
         }
+        if (!formData.clientId) {
+            alert('Seleziona un cliente.');
+            return;
+        }
+        if (!formData.amount || formData.amount <= 0) {
+            alert('L\'importo deve essere maggiore di 0.');
+            return;
+        }
+        onSubmit(formData);
     };
+
+    // Converti le opzioni in formato per FormSelect
+    const typeOptions = CONTRACT_TYPE_OPTIONS.map(type => ({ value: type, label: type }));
+    const statusOptions = CONTRACT_STATUS_OPTIONS.map(status => ({ value: status, label: status }));
+
+    // Debug: verifica che il componente si renderizzi
+    console.log('AddContractForm render - formData:', formData, 'hasClients:', hasClients);
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <h3 className="text-lg font-medium leading-6 text-gray-900 mb-4">Aggiungi Documento</h3>
-            <FormSelect name="type" label="Tipo" value={formData.type} onChange={handleChange} options={CONTRACT_TYPE_OPTIONS} />
-            <FormSelect name="clientId" label="Cliente" value={formData.clientId} onChange={handleChange} options={clients.map((c: any) => ({ value: c.id, label: c.name }))} />
-            <FormSelect name="projectId" label="Progetto (opzionale)" value={formData.projectId} onChange={handleChange} options={availableProjects.map((p: any) => ({ value: p.id, label: p.name }))} />
+            
+            <FormSelect name="type" label="Tipo" value={formData.type} onChange={handleChange} options={typeOptions} />
+            
+            <div>
+                <label htmlFor="contractClientId" className="block text-sm font-medium text-gray-700">
+                    Cliente {!hasClients && <span className="text-red-500">*</span>}
+                </label>
+                {!hasClients ? (
+                    <div className="mt-1 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                        <p className="text-sm text-yellow-800">
+                            ⚠️ Nessun cliente presente. Crea prima un cliente nella sezione "Clienti".
+                        </p>
+                    </div>
+                ) : (
+                    <select
+                        id="contractClientId"
+                        name="clientId"
+                        value={formData.clientId}
+                        onChange={handleChange}
+                        required
+                        className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    >
+                        <option value="">Seleziona un cliente</option>
+                        {clientsList.map((c: any) => (
+                            <option key={c.id} value={c.id}>
+                                {c.name}
+                            </option>
+                        ))}
+                    </select>
+                )}
+            </div>
+            
+            <div>
+                <label htmlFor="contractProjectId" className="block text-sm font-medium text-gray-700">
+                    Progetto (opzionale)
+                </label>
+                {!formData.clientId ? (
+                    <div className="mt-1 p-3 bg-gray-50 border border-gray-200 rounded-md">
+                        <p className="text-sm text-gray-600">
+                            Seleziona prima un cliente per vedere i suoi progetti.
+                        </p>
+                    </div>
+                ) : availableProjects.length === 0 ? (
+                    <div className="mt-1 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                        <p className="text-sm text-blue-800">
+                            ℹ️ Nessun progetto disponibile per questo cliente.
+                        </p>
+                    </div>
+                ) : (
+                    <select
+                        id="contractProjectId"
+                        name="projectId"
+                        value={formData.projectId}
+                        onChange={handleChange}
+                        className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    >
+                        <option value="">Nessun progetto</option>
+                        {availableProjects.map((p: any) => (
+                            <option key={p.id} value={p.id}>
+                                {p.name}
+                            </option>
+                        ))}
+                    </select>
+                )}
+            </div>
+            
             <FormInput name="amount" label="Importo (€)" type="number" value={formData.amount} onChange={handleChange} required />
             <FormInput name="date" label="Data" type="date" value={formData.date} onChange={handleChange} required />
-            <FormSelect name="status" label="Stato Iniziale" value={formData.status} onChange={handleChange} options={CONTRACT_STATUS_OPTIONS} />
+            <FormSelect name="status" label="Stato Iniziale" value={formData.status} onChange={handleChange} options={statusOptions} />
+            
             <div className="pt-4 flex justify-end">
-                <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg shadow-md hover:bg-indigo-700 transition-colors duration-200">
+                <button 
+                    type="submit" 
+                    disabled={!hasClients}
+                    className={`px-4 py-2 rounded-lg shadow-md transition-colors duration-200 ${
+                        hasClients 
+                            ? 'bg-indigo-600 text-white hover:bg-indigo-700' 
+                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    }`}
+                >
                     Salva Documento
                 </button>
             </div>
@@ -908,25 +1185,36 @@ function FormInput({ label, name, type = 'text', value, onChange, required = fal
 }
 
 function FormSelect({ label, name, value, onChange, options, required = false }: any) {
+    // Assicurati che options sia sempre un array
+    const optionsList = Array.isArray(options) ? options : [];
+    
     return (
         <div>
             <label htmlFor={name} className="block text-sm font-medium text-gray-700">{label}</label>
             <select
                 id={name}
                 name={name}
-                value={value}
+                value={value || ''}
                 onChange={onChange}
                 required={required}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             >
-                {options.map((option: any) => (
-                    <option
-                        key={typeof option === 'object' ? option.value : option}
-                        value={typeof option === 'object' ? option.value : option}
-                    >
-                        {typeof option === 'object' ? option.label : option}
-                    </option>
-                ))}
+                {optionsList.length === 0 ? (
+                    <option value="">Nessuna opzione disponibile</option>
+                ) : (
+                    optionsList.map((option: any, index: number) => {
+                        const optionValue = typeof option === 'object' ? option.value : option;
+                        const optionLabel = typeof option === 'object' ? option.label : option;
+                        return (
+                            <option
+                                key={optionValue || index}
+                                value={optionValue}
+                            >
+                                {optionLabel}
+                            </option>
+                        );
+                    })
+                )}
             </select>
         </div>
     );

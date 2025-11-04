@@ -12,6 +12,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     const [password, setPassword] = useState('');
     const [name, setName] = useState('');
     const [area, setArea] = useState('Marketing');
+    const [role, setRole] = useState('Socio');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -39,6 +40,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                     email,
                     password,
                     area,
+                    role,
                 });
                 localStorage.setItem('token', response.token);
                 localStorage.setItem('user', JSON.stringify(response.user));
@@ -121,21 +123,44 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                     </div>
 
                     {!isLogin && (
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Area di Competenza
-                            </label>
-                            <select
-                                value={area}
-                                onChange={(e) => setArea(e.target.value)}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                            >
-                                <option value="CDA">CDA</option>
-                                <option value="Marketing">Marketing</option>
-                                <option value="IT">IT</option>
-                                <option value="Commerciale">Commerciale</option>
-                            </select>
-                        </div>
+                        <>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Ruolo
+                                </label>
+                                <select
+                                    value={role}
+                                    onChange={(e) => setRole(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                >
+                                    <option value="Socio">Socio</option>
+                                    <option value="Presidente">Presidente</option>
+                                    <option value="CDA">CDA</option>
+                                    <option value="Tesoreria">Tesoreria</option>
+                                    <option value="Marketing">Marketing</option>
+                                    <option value="Commerciale">Commerciale</option>
+                                    <option value="IT">IT</option>
+                                    <option value="Audit">Audit</option>
+                                    <option value="Responsabile">Responsabile</option>
+                                    <option value="Admin">Admin</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Area di Competenza
+                                </label>
+                                <select
+                                    value={area}
+                                    onChange={(e) => setArea(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                >
+                                    <option value="CDA">CDA</option>
+                                    <option value="Marketing">Marketing</option>
+                                    <option value="IT">IT</option>
+                                    <option value="Commerciale">Commerciale</option>
+                                </select>
+                            </div>
+                        </>
                     )}
 
                     <button
