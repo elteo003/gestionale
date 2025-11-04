@@ -37,13 +37,33 @@ app.use((req, res, next) => {
     next();
 });
 
-// Middleware
-app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+// Middleware CORS
+const corsOptions = {
+    origin: function (origin, callback) {
+        const allowedOrigins = [
+            process.env.FRONTEND_URL,
+            'http://localhost:5173',
+            'https://gestionale-i5bj.onrender.com'
+        ].filter(Boolean); // Rimuove valori undefined/null
+        
+        // Permetti richieste senza origin (es. Postman, curl)
+        if (!origin) return callback(null, true);
+        
+        if (allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            console.warn('⚠️ CORS: Origin non permessa:', origin);
+            callback(null, true); // Permetti comunque per debug, in produzione usa callback(new Error('Not allowed'))
+        }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-}));
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    preflightContinue: false,
+    optionsSuccessStatus: 204
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

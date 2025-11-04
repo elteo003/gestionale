@@ -102,8 +102,19 @@ async function apiCall(endpoint: string, options: RequestInit = {}): Promise<any
         },
     };
 
+    // Aggiungi timeout per evitare attese infinite
+    const controller = new AbortController();
+    let timeoutId: NodeJS.Timeout | null = null;
+    
     try {
-        const response = await fetch(fullUrl, config);
+        timeoutId = setTimeout(() => controller.abort(), 30000); // 30 secondi timeout
+        
+        const response = await fetch(fullUrl, {
+            ...config,
+            signal: controller.signal
+        });
+        
+        if (timeoutId) clearTimeout(timeoutId);
         
         if (!response.ok) {
             const error = await response.json().catch(() => ({ error: 'Errore sconosciuto' }));
@@ -129,20 +140,26 @@ async function apiCall(endpoint: string, options: RequestInit = {}): Promise<any
         
         return await response.json();
     } catch (error: any) {
+        if (timeoutId) clearTimeout(timeoutId);
+        
         console.error('❌ Errore API:', {
             url: fullUrl,
             method: options.method || 'GET',
             error: error.message,
-            type: error.name
+            type: error.name,
+            name: error.name
         });
         
-        // Se è un errore di rete, fornisci un messaggio più chiaro
-        if (error.message === 'Failed to fetch' || error.name === 'TypeError') {
+        // Se è un errore di rete o timeout, fornisci un messaggio più chiaro
+        if (error.name === 'AbortError' || error.message === 'Failed to fetch' || error.name === 'TypeError') {
+            const isTimeout = error.name === 'AbortError';
             const networkError = new Error(
-                `Impossibile raggiungere il backend. Verifica che:\n` +
-                `1. Il backend sia avviato e raggiungibile\n` +
+                `Impossibile raggiungere il backend. ${isTimeout ? 'Timeout della richiesta.' : ''}\n` +
+                `Verifica che:\n` +
+                `1. Il backend sia avviato e raggiungibile (potrebbe essere in sleep mode)\n` +
                 `2. VITE_API_URL sia configurato correttamente (attuale: ${getApiUrl() || 'NON CONFIGURATO'})\n` +
-                `3. Non ci siano problemi di CORS o firewall`
+                `3. Non ci siano problemi di CORS o firewall\n` +
+                `${isTimeout ? '4. Il backend potrebbe impiegare più tempo per risvegliarsi (Render free tier)' : ''}`
             );
             networkError.name = 'NetworkError';
             throw networkError;
