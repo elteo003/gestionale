@@ -290,7 +290,8 @@ export default function App() {
         }
     };
 
-    const toggleTodo = async (projectId: string, todoId: string) => {
+    // toggleTodo rimosso - non più utilizzato
+    // const toggleTodo = async (projectId: string, todoId: string) => {
         try {
             const updated = await projectsAPI.toggleTodo(projectId, todoId);
             setProjects(projects.map(p =>

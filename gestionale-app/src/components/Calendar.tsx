@@ -126,14 +126,11 @@ export default function Calendar({ currentUser }: CalendarProps) {
         });
     };
 
-    // Ottieni progetti assegnati per un giorno specifico (mostra progetti come eventi nel calendario)
-    // Funzione preparata per future implementazioni con deadline
-    const _getProjectsForDay = (day: number | null) => {
-        if (day === null) return [];
-        // I progetti assegnati vengono mostrati ogni giorno (non hanno una data specifica)
-        // Potresti anche filtrare per data se aggiungi un campo deadline al progetto
-        return assignedProjects;
-    };
+    // Funzione preparata per future implementazioni con deadline - rimossa per ora
+    // const _getProjectsForDay = (day: number | null) => {
+    //     if (day === null) return [];
+    //     return assignedProjects;
+    // };
 
     // Naviga mese
     const changeMonth = (direction: number) => {
