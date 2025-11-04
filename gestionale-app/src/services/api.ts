@@ -3,10 +3,10 @@
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 // Funzione helper per le chiamate API
-async function apiCall(endpoint, options = {}) {
+async function apiCall(endpoint: string, options: RequestInit = {}): Promise<any> {
     const token = localStorage.getItem('token');
     
-    const config = {
+    const config: RequestInit = {
         ...options,
         headers: {
             'Content-Type': 'application/json',
@@ -40,13 +40,13 @@ async function apiCall(endpoint, options = {}) {
 
 // Auth API
 export const authAPI = {
-    login: (email, password) => 
+    login: (email: string, password: string) => 
         apiCall('/api/auth/login', {
             method: 'POST',
             body: JSON.stringify({ email, password }),
         }),
     
-    register: (userData) =>
+    register: (userData: any) =>
         apiCall('/api/auth/register', {
             method: 'POST',
             body: JSON.stringify(userData),
@@ -59,23 +59,23 @@ export const authAPI = {
 // Clients API
 export const clientsAPI = {
     getAll: () => apiCall('/api/clients'),
-    getById: (id) => apiCall(`/api/clients/${id}`),
-    create: (client) =>
+    getById: (id: string) => apiCall(`/api/clients/${id}`),
+    create: (client: any) =>
         apiCall('/api/clients', {
             method: 'POST',
             body: JSON.stringify(client),
         }),
-    update: (id, client) =>
+    update: (id: string, client: any) =>
         apiCall(`/api/clients/${id}`, {
             method: 'PUT',
             body: JSON.stringify(client),
         }),
-    updateStatus: (id, status) =>
+    updateStatus: (id: string, status: string) =>
         apiCall(`/api/clients/${id}/status`, {
             method: 'PATCH',
             body: JSON.stringify({ status }),
         }),
-    delete: (id) =>
+    delete: (id: string) =>
         apiCall(`/api/clients/${id}`, {
             method: 'DELETE',
         }),
@@ -84,36 +84,36 @@ export const clientsAPI = {
 // Projects API
 export const projectsAPI = {
     getAll: () => apiCall('/api/projects'),
-    getById: (id) => apiCall(`/api/projects/${id}`),
-    create: (project) =>
+    getById: (id: string) => apiCall(`/api/projects/${id}`),
+    create: (project: any) =>
         apiCall('/api/projects', {
             method: 'POST',
             body: JSON.stringify(project),
         }),
-    update: (id, project) =>
+    update: (id: string, project: any) =>
         apiCall(`/api/projects/${id}`, {
             method: 'PUT',
             body: JSON.stringify(project),
         }),
-    updateStatus: (id, status) =>
+    updateStatus: (id: string, status: string) =>
         apiCall(`/api/projects/${id}/status`, {
             method: 'PATCH',
             body: JSON.stringify({ status }),
         }),
-    delete: (id) =>
+    delete: (id: string) =>
         apiCall(`/api/projects/${id}`, {
             method: 'DELETE',
         }),
-    addTodo: (projectId, todo) =>
+    addTodo: (projectId: string, todo: any) =>
         apiCall(`/api/projects/${projectId}/todos`, {
             method: 'POST',
             body: JSON.stringify(todo),
         }),
-    toggleTodo: (projectId, todoId) =>
+    toggleTodo: (projectId: string, todoId: string) =>
         apiCall(`/api/projects/${projectId}/todos/${todoId}/toggle`, {
             method: 'PATCH',
         }),
-    deleteTodo: (projectId, todoId) =>
+    deleteTodo: (projectId: string, todoId: string) =>
         apiCall(`/api/projects/${projectId}/todos/${todoId}`, {
             method: 'DELETE',
         }),
@@ -122,23 +122,23 @@ export const projectsAPI = {
 // Contracts API
 export const contractsAPI = {
     getAll: () => apiCall('/api/contracts'),
-    getById: (id) => apiCall(`/api/contracts/${id}`),
-    create: (contract) =>
+    getById: (id: string) => apiCall(`/api/contracts/${id}`),
+    create: (contract: any) =>
         apiCall('/api/contracts', {
             method: 'POST',
             body: JSON.stringify(contract),
         }),
-    update: (id, contract) =>
+    update: (id: string, contract: any) =>
         apiCall(`/api/contracts/${id}`, {
             method: 'PUT',
             body: JSON.stringify(contract),
         }),
-    updateStatus: (id, status) =>
+    updateStatus: (id: string, status: string) =>
         apiCall(`/api/contracts/${id}/status`, {
             method: 'PATCH',
             body: JSON.stringify({ status }),
         }),
-    delete: (id) =>
+    delete: (id: string) =>
         apiCall(`/api/contracts/${id}`, {
             method: 'DELETE',
         }),
@@ -146,7 +146,7 @@ export const contractsAPI = {
 
 // Events API
 export const eventsAPI = {
-    getAll: (filters = {}) => {
+    getAll: (filters: any = {}) => {
         const params = new URLSearchParams();
         if (filters.startDate) params.append('startDate', filters.startDate);
         if (filters.endDate) params.append('endDate', filters.endDate);
@@ -155,24 +155,24 @@ export const eventsAPI = {
         const query = params.toString();
         return apiCall(`/api/events${query ? `?${query}` : ''}`);
     },
-    getById: (id) => apiCall(`/api/events/${id}`),
-    getParticipants: (id) => apiCall(`/api/events/${id}/participants`),
+    getById: (id: string) => apiCall(`/api/events/${id}`),
+    getParticipants: (id: string) => apiCall(`/api/events/${id}/participants`),
     getMyUpcoming: () => apiCall('/api/events/my/upcoming'),
-    create: (event) =>
+    create: (event: any) =>
         apiCall('/api/events', {
             method: 'POST',
             body: JSON.stringify(event),
         }),
-    update: (id, event) =>
+    update: (id: string, event: any) =>
         apiCall(`/api/events/${id}`, {
             method: 'PUT',
             body: JSON.stringify(event),
         }),
-    delete: (id) =>
+    delete: (id: string) =>
         apiCall(`/api/events/${id}`, {
             method: 'DELETE',
         }),
-    rsvp: (id, status) =>
+    rsvp: (id: string, status: string) =>
         apiCall(`/api/events/${id}/rsvp`, {
             method: 'POST',
             body: JSON.stringify({ status }),
@@ -182,6 +182,6 @@ export const eventsAPI = {
 // Users API
 export const usersAPI = {
     getAll: () => apiCall('/api/users'),
-    getById: (id) => apiCall(`/api/users/${id}`),
+    getById: (id: string) => apiCall(`/api/users/${id}`),
 };
 

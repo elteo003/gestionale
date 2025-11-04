@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
     LayoutDashboard,
     Users,
@@ -13,13 +13,12 @@ import {
     X,
     Menu,
     Flag,
-    Calendar,
     LogOut,
     User
 } from 'lucide-react';
 import Login from './components/Login';
 import Calendar from './components/Calendar';
-import { clientsAPI, projectsAPI, contractsAPI, authAPI } from './services/api';
+import { clientsAPI, projectsAPI, contractsAPI, authAPI } from './services/api.ts';
 
 // --- Costanti per le Opzioni ---
 const CLIENT_STATUS_OPTIONS = ['Prospect', 'In Contatto', 'In Negoziazione', 'Attivo', 'Chiuso', 'Perso'];
@@ -52,7 +51,7 @@ export default function App() {
         if (token && savedUser) {
             // Verifica il token
             authAPI.verify()
-                .then((response) => {
+                .then((response: any) => {
                     setUser(response.user);
                     setIsAuthenticated(true);
                     loadData();
@@ -84,7 +83,7 @@ export default function App() {
         }
     };
 
-    const handleLoginSuccess = (userData: any, token: string) => {
+    const handleLoginSuccess = (userData: any) => {
         setUser(userData);
         setIsAuthenticated(true);
         loadData();
@@ -187,7 +186,7 @@ export default function App() {
             setProjects(projects.map(p =>
                 p.id === projectId ? {
                     ...p,
-                    todos: p.todos.map(t => t.id === todoId ? updated : t)
+                    todos: p.todos.map((t: any) => t.id === todoId ? updated : t)
                 } : p
             ));
         } catch (error: any) {
@@ -201,7 +200,7 @@ export default function App() {
             setProjects(projects.map(p =>
                 p.id === projectId ? {
                     ...p,
-                    todos: p.todos.filter(t => t.id !== todoId)
+                    todos: p.todos.filter((t: any) => t.id !== todoId)
                 } : p
             ));
         } catch (error: any) {

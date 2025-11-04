@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, Plus, Clock, Users, CheckCircle, XCircle, Phone, AlertCircle } from 'lucide-react';
-import { eventsAPI, usersAPI } from '../services/api';
+import { Plus, Clock, Users, CheckCircle, XCircle, Phone, AlertCircle } from 'lucide-react';
+import { eventsAPI, usersAPI } from '../services/api.ts';
 
 interface Event {
     id: string;
@@ -35,7 +35,6 @@ export default function Calendar({ currentUser }: CalendarProps) {
     const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-    const [viewMode, setViewMode] = useState<'month' | 'week' | 'day'>('month');
 
     // Carica eventi e utenti
     useEffect(() => {
@@ -349,7 +348,7 @@ export default function Calendar({ currentUser }: CalendarProps) {
 }
 
 // Modale Dettaglio Evento
-function EventDetailModal({ event, currentUser, onClose, onRSVP, onRefresh }: any) {
+function EventDetailModal({ event, currentUser, onClose, onRSVP }: any) {
     const myStatus = event.participants?.find((p: Participant) => p.userId === currentUser?.id)?.status;
 
     const formatDateTime = (dateString: string) => {
@@ -520,6 +519,7 @@ function CreateEventModal({ allUsers, currentUser, onClose, onSuccess }: any) {
         startTime: '',
         endTime: '',
         isCall: false,
+        callLink: '',
         participantIds: [] as string[],
     });
     const [loading, setLoading] = useState(false);

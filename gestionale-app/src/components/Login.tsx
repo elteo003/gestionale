@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { authAPI } from '../services/api.js';
+import { authAPI } from '../services/api.ts';
 import { LogIn, UserPlus, Mail, Lock, AlertCircle } from 'lucide-react';
 
 interface LoginProps {
