@@ -2,9 +2,15 @@
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
+// Log dell'URL configurato (solo in development)
+if (import.meta.env.DEV) {
+    console.log('🔗 API URL configurato:', API_URL || 'NON CONFIGURATO ⚠️');
+}
+
 // Funzione helper per le chiamate API
 async function apiCall(endpoint: string, options: RequestInit = {}): Promise<any> {
     const token = localStorage.getItem('token');
+    const fullUrl = `${API_URL}${endpoint}`;
     
     const config: RequestInit = {
         ...options,
@@ -16,7 +22,7 @@ async function apiCall(endpoint: string, options: RequestInit = {}): Promise<any
     };
 
     try {
-        const response = await fetch(`${API_URL}${endpoint}`, config);
+        const response = await fetch(fullUrl, config);
         
         if (!response.ok) {
             const error = await response.json().catch(() => ({ error: 'Errore sconosciuto' }));
@@ -32,8 +38,26 @@ async function apiCall(endpoint: string, options: RequestInit = {}): Promise<any
         }
         
         return await response.json();
-    } catch (error) {
-        console.error('Errore API:', error);
+    } catch (error: any) {
+        console.error('❌ Errore API:', {
+            url: fullUrl,
+            method: options.method || 'GET',
+            error: error.message,
+            type: error.name
+        });
+        
+        // Se è un errore di rete, fornisci un messaggio più chiaro
+        if (error.message === 'Failed to fetch' || error.name === 'TypeError') {
+            const networkError = new Error(
+                `Impossibile raggiungere il backend. Verifica che:\n` +
+                `1. Il backend sia avviato e raggiungibile\n` +
+                `2. VITE_API_URL sia configurato correttamente (attuale: ${API_URL || 'NON CONFIGURATO'})\n` +
+                `3. Non ci siano problemi di CORS o firewall`
+            );
+            networkError.name = 'NetworkError';
+            throw networkError;
+        }
+        
         throw error;
     }
 }

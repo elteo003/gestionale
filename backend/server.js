@@ -56,5 +56,14 @@ app.listen(PORT, () => {
     console.log(`🚀 Server avviato sulla porta ${PORT}`);
     console.log(`📡 Ambiente: ${process.env.NODE_ENV || 'development'}`);
     console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:5173'}`);
+    console.log(`🔗 Database URL configurato: ${process.env.DATABASE_URL ? 'Sì' : 'NO ⚠️'}`);
+    console.log(`🔐 JWT Secret configurato: ${process.env.JWT_SECRET ? 'Sì' : 'NO ⚠️'}`);
+    
+    if (!process.env.DATABASE_URL) {
+        console.error('⚠️  ATTENZIONE: DATABASE_URL non è configurato!');
+    }
+    if (!process.env.JWT_SECRET) {
+        console.error('⚠️  ATTENZIONE: JWT_SECRET non è configurato!');
+    }
 });
 

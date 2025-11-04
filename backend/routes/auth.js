@@ -57,7 +57,19 @@ router.post('/register', async (req, res) => {
         });
     } catch (error) {
         console.error('Errore registrazione:', error);
-        res.status(500).json({ error: 'Errore interno del server' });
+        console.error('Stack:', error.stack);
+        
+        // Se è un errore di connessione database
+        if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+            return res.status(500).json({ 
+                error: 'Errore di connessione al database. Verifica che il database sia configurato correttamente.' 
+            });
+        }
+        
+        res.status(500).json({ 
+            error: 'Errore interno del server',
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     }
 });
 
@@ -109,7 +121,19 @@ router.post('/login', async (req, res) => {
         });
     } catch (error) {
         console.error('Errore login:', error);
-        res.status(500).json({ error: 'Errore interno del server' });
+        console.error('Stack:', error.stack);
+        
+        // Se è un errore di connessione database
+        if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+            return res.status(500).json({ 
+                error: 'Errore di connessione al database. Verifica che il database sia configurato correttamente.' 
+            });
+        }
+        
+        res.status(500).json({ 
+            error: 'Errore interno del server',
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     }
 });
 
