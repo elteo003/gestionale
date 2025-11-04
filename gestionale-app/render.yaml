@@ -7,5 +7,5 @@ services:
     staticPublishPath: dist
     envVars:
       - key: VITE_API_URL
-        value: https://gestionale-backend.onrender.com
+        value: https://gestionale-backand-api.onrender.com
 
