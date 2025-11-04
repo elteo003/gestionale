@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     area VARCHAR(50) CHECK (area IN ('CDA', 'Marketing', 'IT', 'Commerciale')),
-    role VARCHAR(50) DEFAULT 'Socio' CHECK (role IN ('Socio', 'Responsabile', 'Admin')),
+    role VARCHAR(50) DEFAULT 'Socio' CHECK (role IN ('Socio', 'Responsabile', 'Admin', 'Presidente', 'CDA', 'Tesoreria', 'Marketing', 'Commerciale', 'IT', 'Audit')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

@@ -75,30 +75,98 @@ router.post('/register', async (req, res) => {
 
 // Login
 router.post('/login', async (req, res) => {
+    const startTime = Date.now();
+    const timestamp = new Date().toISOString();
+    
+    console.log('\n═══════════════════════════════════════════════════════════');
+    console.log(`🔐 [LOGIN] ${timestamp}`);
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('📥 Richiesta ricevuta:', {
+        method: req.method,
+        path: req.path,
+        headers: {
+            'content-type': req.headers['content-type'],
+            'origin': req.headers.origin,
+            'user-agent': req.headers['user-agent']?.substring(0, 50) + '...'
+        }
+    });
+
     try {
         const { email, password } = req.body;
+        
+        console.log('📋 Dati ricevuti:', {
+            email: email ? email.substring(0, 20) + '...' : 'MANCANTE',
+            passwordLength: password ? password.length : 0,
+            hasPassword: !!password
+        });
 
         if (!email || !password) {
+            console.log('❌ VALIDAZIONE FALLITA: Email o password mancanti');
+            console.log('   Email presente:', !!email);
+            console.log('   Password presente:', !!password);
             return res.status(400).json({ error: 'Email e password sono obbligatori' });
         }
 
+        console.log('✅ Validazione campi OK');
+        console.log('🔍 Cercando utente nel database...');
+
         // Trova utente
         const result = await pool.query(
-            'SELECT user_id, name, email, password_hash, area, role FROM users WHERE email = $1',
+            'SELECT user_id, name, email, password_hash, area, role, is_active FROM users WHERE email = $1',
             [email]
         );
 
+        console.log('📊 Risultato query database:', {
+            rowsFound: result.rows.length,
+            queryTime: Date.now() - startTime + 'ms'
+        });
+
         if (result.rows.length === 0) {
+            console.log('❌ UTENTE NON TROVATO nel database');
+            console.log('   Email cercata:', email);
             return res.status(401).json({ error: 'Credenziali non valide' });
         }
 
         const user = result.rows[0];
+        console.log('✅ Utente trovato:', {
+            id: user.user_id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            area: user.area,
+            is_active: user.is_active
+        });
 
+        if (user.is_active === false) {
+            console.log('⚠️  UTENTE DISATTIVATO');
+            return res.status(401).json({ error: 'Account disattivato' });
+        }
+
+        console.log('🔐 Verificando password...');
+        const passwordCheckStart = Date.now();
+        
         // Verifica password
         const validPassword = await bcrypt.compare(password, user.password_hash);
+        
+        const passwordCheckTime = Date.now() - passwordCheckStart;
+        console.log('🔐 Risultato verifica password:', {
+            valid: validPassword,
+            checkTime: passwordCheckTime + 'ms'
+        });
 
         if (!validPassword) {
+            console.log('❌ PASSWORD NON VALIDA');
+            console.log('   Password hash nel DB:', user.password_hash ? user.password_hash.substring(0, 20) + '...' : 'NULL');
             return res.status(401).json({ error: 'Credenziali non valide' });
+        }
+
+        console.log('✅ Password verificata correttamente');
+        console.log('🎫 Generando JWT token...');
+
+        // Verifica JWT_SECRET
+        if (!process.env.JWT_SECRET) {
+            console.error('❌ ERRORE CRITICO: JWT_SECRET non configurato!');
+            return res.status(500).json({ error: 'Errore di configurazione del server' });
         }
 
         // Genera JWT token
@@ -107,6 +175,18 @@ router.post('/login', async (req, res) => {
             process.env.JWT_SECRET,
             { expiresIn: '7d' }
         );
+
+        const totalTime = Date.now() - startTime;
+        console.log('✅ Token generato con successo');
+        console.log('📤 Invio risposta di successo...');
+        console.log('📊 Riepilogo:', {
+            success: true,
+            userId: user.user_id,
+            role: user.role,
+            totalTime: totalTime + 'ms',
+            tokenLength: token.length
+        });
+        console.log('═══════════════════════════════════════════════════════════\n');
 
         res.json({
             message: 'Login effettuato con successo',
@@ -120,11 +200,19 @@ router.post('/login', async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Errore login:', error);
+        const totalTime = Date.now() - startTime;
+        console.error('\n❌ ERRORE DURANTE IL LOGIN');
+        console.error('═══════════════════════════════════════════════════════════');
+        console.error('Tipo errore:', error.name);
+        console.error('Messaggio:', error.message);
+        console.error('Codice errore:', error.code);
         console.error('Stack:', error.stack);
+        console.error('Tempo totale:', totalTime + 'ms');
+        console.error('═══════════════════════════════════════════════════════════\n');
         
         // Se è un errore di connessione database
         if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+            console.error('❌ ERRORE CONNESSIONE DATABASE');
             return res.status(500).json({ 
                 error: 'Errore di connessione al database. Verifica che il database sia configurato correttamente.' 
             });

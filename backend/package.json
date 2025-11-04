@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "migrate": "node scripts/migrate.js"
+    "migrate": "node scripts/migrate.js",
+    "create-user": "node scripts/create_admin_user.js"
   },
   "dependencies": {
     "express": "^4.18.2",

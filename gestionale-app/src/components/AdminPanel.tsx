@@ -754,15 +754,16 @@ function MockDataSettings({ useMockData, onToggle }: any) {
                         Scegli quali sezioni usare con dati simulati.
                     </p>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer ml-6">
-                    <input
-                        type="checkbox"
-                        checked={useMockData}
-                        onChange={(e) => handleGlobalToggle(e.target.checked)}
-                        className="sr-only peer"
-                    />
-                    <div className="w-14 h-7 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-yellow-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-yellow-500"></div>
-                </label>
+                <button
+                    onClick={() => handleGlobalToggle(!useMockData)}
+                    className={`ml-6 px-6 py-3 rounded-lg font-semibold text-sm transition-all ${
+                        useMockData
+                            ? 'bg-yellow-500 text-white hover:bg-yellow-600 shadow-md'
+                            : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
+                    }`}
+                >
+                    {useMockData ? 'ON' : 'OFF'}
+                </button>
             </div>
 
             {/* Sezioni Mock Configurabili */}
@@ -785,12 +786,11 @@ function MockDataSettings({ useMockData, onToggle }: any) {
                             return (
                                 <div
                                     key={section}
-                                    className={`p-4 rounded-lg border-2 transition-all cursor-pointer hover:shadow-md ${
+                                    className={`p-4 rounded-lg border-2 transition-all ${
                                         isActive
                                             ? 'bg-green-50 border-green-300'
                                             : 'bg-gray-50 border-gray-200'
                                     }`}
-                                    onClick={() => handleSectionToggle(section)}
                                 >
                                     <div className="flex items-start justify-between">
                                         <div className="flex-1">
@@ -805,16 +805,16 @@ function MockDataSettings({ useMockData, onToggle }: any) {
                                             </div>
                                             <p className="text-xs text-gray-600 mt-1">{config.description}</p>
                                         </div>
-                                        <label className="relative inline-flex items-center cursor-pointer ml-4">
-                                            <input
-                                                type="checkbox"
-                                                checked={isActive}
-                                                onChange={() => handleSectionToggle(section)}
-                                                onClick={(e) => e.stopPropagation()}
-                                                className="sr-only peer"
-                                            />
-                                            <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
-                                        </label>
+                                        <button
+                                            onClick={() => handleSectionToggle(section)}
+                                            className={`ml-4 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                                                isActive
+                                                    ? 'bg-green-500 text-white hover:bg-green-600 shadow-md'
+                                                    : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
+                                            }`}
+                                        >
+                                            {isActive ? 'ON' : 'OFF'}
+                                        </button>
                                     </div>
                                 </div>
                             );

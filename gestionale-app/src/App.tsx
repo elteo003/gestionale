@@ -443,8 +443,9 @@ export default function App() {
 
 function Sidebar({ activeView, setActiveView, user, onLogout, className = '', onNavigate }: any) {
     const isAdmin = user?.role === 'Admin' || user?.role === 'IT' || user?.role === 'Responsabile';
-    // Contabilità visibile solo a Commerciale e Tesoreria
-    const canViewContabilita = user?.role === 'Commerciale' || user?.role === 'Tesoreria' || isAdmin;
+    // Contabilità visibile solo a Tesoreria e Responsabile dell'area Commerciale
+    const canViewContabilita = user?.role === 'Tesoreria' || 
+                                (user?.role === 'Responsabile' && user?.area === 'Commerciale');
     
     const navItems = [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
