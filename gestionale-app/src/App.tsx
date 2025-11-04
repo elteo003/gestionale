@@ -14,7 +14,8 @@ import {
     Menu,
     Flag,
     LogOut,
-    User
+    User,
+    CalendarIcon
 } from 'lucide-react';
 import Login from './components/Login';
 import Calendar from './components/Calendar';
@@ -344,7 +345,7 @@ function Sidebar({ activeView, setActiveView, user, onLogout, className = '', on
         { id: 'clienti', label: 'Clienti', icon: Users },
         { id: 'progetti', label: 'Progetti', icon: Briefcase },
         { id: 'contabilita', label: 'Contabilità', icon: FileText },
-        { id: 'calendario', label: 'Calendario', icon: Calendar },
+        { id: 'calendario', label: 'Calendario', icon: CalendarIcon },
     ];
 
     const handleClick = (view: string) => {
