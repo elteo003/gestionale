@@ -1,0 +1,11 @@
+# Render Blueprint per Frontend Statico
+services:
+  - type: web
+    name: gestionale-frontend
+    env: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://gestionale-backend.onrender.com
+

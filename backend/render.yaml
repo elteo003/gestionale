@@ -1,0 +1,27 @@
+# Render Blueprint per Backend API
+services:
+  - type: web
+    name: gestionale-backend
+    env: node
+    plan: starter
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: gestionale-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        value: https://gestionale-frontend.onrender.com
+    healthCheckPath: /health
+
+databases:
+  - name: gestionale-db
+    plan: starter
+    databaseName: gestionale_db
+    user: gestionale_user
+
