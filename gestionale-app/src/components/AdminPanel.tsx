@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Users, Activity, Database, Settings, Trash2, Edit2, Key, Power, PowerOff, Plus, X, AlertCircle, CheckCircle } from 'lucide-react';
+import { Users, Activity, Database, Settings, Trash2, Edit2, Key, Power, PowerOff, Plus, X, AlertCircle, CheckCircle, RefreshCw, Wifi, WifiOff, Server, Loader } from 'lucide-react';
+import DiagnosticsModal from './DiagnosticsModal';
 
 // Mock data per testing
 const MOCK_USERS = [
@@ -19,13 +20,15 @@ export default function AdminPanel({ user }: AdminPanelProps) {
     const [activeTab, setActiveTab] = useState<'users' | 'health' | 'mock' | 'online'>('users');
     const [users, setUsers] = useState<any[]>([]);
     const [onlineUsers, setOnlineUsers] = useState<any[]>([]);
-    const [healthStatus, setHealthStatus] = useState<{ api: 'ok' | 'error', db: 'ok' | 'error' }>({ api: 'ok', db: 'ok' });
+    const [healthStatus, setHealthStatus] = useState<{ api: 'ok' | 'error', db: 'ok' | 'error', lastCheck?: string }>({ api: 'ok', db: 'ok' });
     const [useMockData, setUseMockData] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState<any>(null);
+    const [diagnosticsModalOpen, setDiagnosticsModalOpen] = useState(false);
+    const [diagnosticsType, setDiagnosticsType] = useState<'api' | 'db' | null>(null);
 
     // Carica stato mock data da localStorage
     useEffect(() => {
@@ -35,16 +38,34 @@ export default function AdminPanel({ user }: AdminPanelProps) {
 
     // Health check polling
     useEffect(() => {
+        const getApiUrl = () => {
+            return localStorage.getItem('customApiUrl') || import.meta.env.VITE_API_URL || 'http://localhost:3000';
+        };
+
         const checkHealth = async () => {
             try {
-                const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/health`);
+                const apiUrl = getApiUrl();
+                const startTime = Date.now();
+                const response = await fetch(`${apiUrl}/health`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' },
+                    signal: AbortSignal.timeout(5000) // Timeout 5 secondi
+                });
+                const responseTime = Date.now() - startTime;
                 const data = await response.json();
                 setHealthStatus({
                     api: response.ok ? 'ok' : 'error',
-                    db: data.db || 'ok'
+                    db: data.db || 'ok',
+                    lastCheck: new Date().toISOString(),
+                    responseTime
                 });
-            } catch (error) {
-                setHealthStatus({ api: 'error', db: 'error' });
+            } catch (error: any) {
+                setHealthStatus({ 
+                    api: 'error', 
+                    db: 'error',
+                    lastCheck: new Date().toISOString(),
+                    error: error.message || 'Errore sconosciuto'
+                });
             }
         };
 
@@ -311,7 +332,13 @@ export default function AdminPanel({ user }: AdminPanelProps) {
                 )}
 
                 {activeTab === 'health' && (
-                    <HealthCheck healthStatus={healthStatus} />
+                    <HealthCheck 
+                        healthStatus={healthStatus} 
+                        onDiagnosticsClick={(type: 'api' | 'db') => {
+                            setDiagnosticsType(type);
+                            setDiagnosticsModalOpen(true);
+                        }}
+                    />
                 )}
 
                 {activeTab === 'online' && (
@@ -339,6 +366,17 @@ export default function AdminPanel({ user }: AdminPanelProps) {
                         setSelectedUser(null);
                     }}
                     onSubmit={(updates) => handleUpdateUser(selectedUser.id, updates)}
+                />
+            )}
+
+            {diagnosticsModalOpen && diagnosticsType && (
+                <DiagnosticsModal
+                    type={diagnosticsType}
+                    healthStatus={healthStatus}
+                    onClose={() => {
+                        setDiagnosticsModalOpen(false);
+                        setDiagnosticsType(null);
+                    }}
                 />
             )}
         </div>
@@ -429,31 +467,137 @@ function UsersManagement({ users, loading, onCreateClick, onEditClick, onResetPa
 }
 
 // Componente Health Check
-function HealthCheck({ healthStatus }: any) {
+function HealthCheck({ healthStatus, onDiagnosticsClick }: any) {
+    const getApiUrl = () => {
+        return localStorage.getItem('customApiUrl') || import.meta.env.VITE_API_URL || 'http://localhost:3000';
+    };
+
+    const formatLastCheck = () => {
+        if (!healthStatus.lastCheck) return 'Mai controllato';
+        const lastCheck = new Date(healthStatus.lastCheck);
+        const secondsAgo = Math.floor((Date.now() - lastCheck.getTime()) / 1000);
+        if (secondsAgo < 60) return `${secondsAgo}s fa`;
+        return `${Math.floor(secondsAgo / 60)}m fa`;
+    };
+
     return (
         <div className="space-y-6">
             <div className="bg-white rounded-lg shadow-md p-6">
-                <h3 className="text-lg font-semibold mb-4">Stato del Sistema</h3>
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-semibold">Stato del Sistema</h3>
+                    <button
+                        onClick={() => {
+                            // Trigger manual health check
+                            window.location.reload();
+                        }}
+                        className="flex items-center px-3 py-1 text-sm text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-lg transition-colors"
+                    >
+                        <RefreshCw className="w-4 h-4 mr-1" />
+                        Aggiorna
+                    </button>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                        <div>
-                            <p className="font-medium">Stato API</p>
-                            <p className="text-sm text-gray-600">Frontend ➔ Backend</p>
+                    {/* API Status Card */}
+                    <div 
+                        className={`relative flex items-center justify-between p-5 rounded-lg border-2 transition-all cursor-pointer hover:shadow-lg ${
+                            healthStatus.api === 'ok' 
+                                ? 'bg-green-50 border-green-200 hover:border-green-300' 
+                                : 'bg-red-50 border-red-200 hover:border-red-300 animate-shake'
+                        }`}
+                        onClick={() => onDiagnosticsClick('api')}
+                    >
+                        <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                                <Server className={`w-5 h-5 ${healthStatus.api === 'ok' ? 'text-green-600' : 'text-red-600'}`} />
+                                <p className="font-semibold text-gray-800">Stato API</p>
+                            </div>
+                            <p className="text-sm text-gray-600 mb-1">Frontend ➔ Backend</p>
+                            <p className="text-xs text-gray-500">Ultimo check: {formatLastCheck()}</p>
+                            {healthStatus.responseTime && (
+                                <p className="text-xs text-gray-500 mt-1">Tempo risposta: {healthStatus.responseTime}ms</p>
+                            )}
                         </div>
-                        <div className="flex items-center space-x-2">
-                            <div className={`w-4 h-4 rounded-full ${healthStatus.api === 'ok' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
-                            <span className="text-sm font-medium">{healthStatus.api === 'ok' ? 'OK' : 'ERROR'}</span>
+                        <div className="flex flex-col items-center space-y-2 ml-4">
+                            <div className={`relative w-12 h-12 rounded-full flex items-center justify-center ${
+                                healthStatus.api === 'ok' ? 'bg-green-100' : 'bg-red-100'
+                            }`}>
+                                {healthStatus.api === 'ok' ? (
+                                    <>
+                                        <div className="absolute w-12 h-12 rounded-full bg-green-400 animate-ping opacity-75"></div>
+                                        <CheckCircle className="w-6 h-6 text-green-600 relative z-10" />
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="absolute w-12 h-12 rounded-full bg-red-400 animate-pulse opacity-75"></div>
+                                        <AlertCircle className="w-6 h-6 text-red-600 relative z-10 animate-bounce" />
+                                    </>
+                                )}
+                            </div>
+                            <span className={`text-sm font-bold px-3 py-1 rounded-full ${
+                                healthStatus.api === 'ok' 
+                                    ? 'bg-green-200 text-green-800' 
+                                    : 'bg-red-200 text-red-800 animate-pulse'
+                            }`}>
+                                {healthStatus.api === 'ok' ? 'OK' : 'ERROR'}
+                            </span>
                         </div>
+                        {healthStatus.api === 'error' && (
+                            <div className="absolute top-2 right-2">
+                                <span className="text-xs bg-red-500 text-white px-2 py-1 rounded-full animate-pulse">
+                                    Clicca per diagnosticare
+                                </span>
+                            </div>
+                        )}
                     </div>
-                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                        <div>
-                            <p className="font-medium">Stato Database</p>
-                            <p className="text-sm text-gray-600">Backend ➔ Database</p>
+
+                    {/* Database Status Card */}
+                    <div 
+                        className={`relative flex items-center justify-between p-5 rounded-lg border-2 transition-all cursor-pointer hover:shadow-lg ${
+                            healthStatus.db === 'ok' 
+                                ? 'bg-green-50 border-green-200 hover:border-green-300' 
+                                : 'bg-red-50 border-red-200 hover:border-red-300 animate-shake'
+                        }`}
+                        onClick={() => onDiagnosticsClick('db')}
+                    >
+                        <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                                <Database className={`w-5 h-5 ${healthStatus.db === 'ok' ? 'text-green-600' : 'text-red-600'}`} />
+                                <p className="font-semibold text-gray-800">Stato Database</p>
+                            </div>
+                            <p className="text-sm text-gray-600 mb-1">Backend ➔ Database</p>
+                            <p className="text-xs text-gray-500">Ultimo check: {formatLastCheck()}</p>
                         </div>
-                        <div className="flex items-center space-x-2">
-                            <div className={`w-4 h-4 rounded-full ${healthStatus.db === 'ok' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
-                            <span className="text-sm font-medium">{healthStatus.db === 'ok' ? 'OK' : 'ERROR'}</span>
+                        <div className="flex flex-col items-center space-y-2 ml-4">
+                            <div className={`relative w-12 h-12 rounded-full flex items-center justify-center ${
+                                healthStatus.db === 'ok' ? 'bg-green-100' : 'bg-red-100'
+                            }`}>
+                                {healthStatus.db === 'ok' ? (
+                                    <>
+                                        <div className="absolute w-12 h-12 rounded-full bg-green-400 animate-ping opacity-75"></div>
+                                        <CheckCircle className="w-6 h-6 text-green-600 relative z-10" />
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="absolute w-12 h-12 rounded-full bg-red-400 animate-pulse opacity-75"></div>
+                                        <AlertCircle className="w-6 h-6 text-red-600 relative z-10 animate-bounce" />
+                                    </>
+                                )}
+                            </div>
+                            <span className={`text-sm font-bold px-3 py-1 rounded-full ${
+                                healthStatus.db === 'ok' 
+                                    ? 'bg-green-200 text-green-800' 
+                                    : 'bg-red-200 text-red-800 animate-pulse'
+                            }`}>
+                                {healthStatus.db === 'ok' ? 'OK' : 'ERROR'}
+                            </span>
                         </div>
+                        {healthStatus.db === 'error' && (
+                            <div className="absolute top-2 right-2">
+                                <span className="text-xs bg-red-500 text-white px-2 py-1 rounded-full animate-pulse">
+                                    Clicca per diagnosticare
+                                </span>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -465,23 +609,54 @@ function HealthCheck({ healthStatus }: any) {
 function OnlineUsers({ users }: any) {
     return (
         <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-lg font-semibold mb-4">Visti di Recente (Ultimi 5 Minuti)</h3>
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <Users className="w-5 h-5" />
+                Visti di Recente (Ultimi 5 Minuti)
+            </h3>
             {users.length === 0 ? (
-                <p className="text-gray-500 text-sm">Nessun utente connesso</p>
+                <div className="text-center py-8">
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
+                        <Users className="w-8 h-8 text-gray-400" />
+                    </div>
+                    <p className="text-gray-500 text-sm">Nessun utente connesso</p>
+                </div>
             ) : (
-                <div className="space-y-2">
-                    {users.map((user: any) => {
+                <div className="space-y-3">
+                    {users.map((user: any, index: number) => {
                         const lastSeen = new Date(user.last_seen);
                         const minutesAgo = Math.floor((new Date().getTime() - lastSeen.getTime()) / 60000);
+                        const secondsAgo = Math.floor((new Date().getTime() - lastSeen.getTime()) / 1000);
+                        const timeAgo = secondsAgo < 60 ? `${secondsAgo}s fa` : `${minutesAgo}m fa`;
+                        
                         return (
-                            <div key={user.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                <div>
-                                    <p className="font-medium">{user.name}</p>
-                                    <p className="text-sm text-gray-600">{user.email} - {user.area} ({user.role})</p>
+                            <div 
+                                key={user.id} 
+                                className="flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-gray-50 rounded-lg border-2 border-green-200 hover:shadow-md transition-all animate-fadeIn"
+                                style={{ animationDelay: `${index * 100}ms` }}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="relative">
+                                        <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center border-2 border-indigo-300">
+                                            <span className="text-indigo-600 font-semibold text-lg">
+                                                {user.name.charAt(0).toUpperCase()}
+                                            </span>
+                                        </div>
+                                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white animate-pulse"></div>
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-gray-800">{user.name}</p>
+                                        <p className="text-sm text-gray-600">{user.email}</p>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            {user.area} • {user.role}
+                                        </p>
+                                    </div>
                                 </div>
-                                <div className="flex items-center space-x-2">
-                                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                                    <span className="text-xs text-gray-500">{minutesAgo} minuti fa</span>
+                                <div className="flex flex-col items-end">
+                                    <div className="flex items-center space-x-2 mb-1">
+                                        <div className="w-3 h-3 bg-green-500 rounded-full animate-ping"></div>
+                                        <span className="text-xs font-semibold text-green-600">Online</span>
+                                    </div>
+                                    <span className="text-xs text-gray-500">{timeAgo}</span>
                                 </div>
                             </div>
                         );
@@ -494,32 +669,173 @@ function OnlineUsers({ users }: any) {
 
 // Componente Mock Data Settings
 function MockDataSettings({ useMockData, onToggle }: any) {
+    const [mockSections, setMockSections] = useState({
+        dashboard: false,
+        clients: false,
+        projects: false,
+        contracts: false,
+        events: false
+    });
+
+    useEffect(() => {
+        // Carica configurazione mock sections da localStorage
+        const saved = localStorage.getItem('mockDataSections');
+        if (saved) {
+            try {
+                setMockSections(JSON.parse(saved));
+            } catch (e) {
+                console.error('Errore caricamento mock sections:', e);
+            }
+        }
+    }, []);
+
+    const handleSectionToggle = (section: keyof typeof mockSections) => {
+        const newSections = {
+            ...mockSections,
+            [section]: !mockSections[section]
+        };
+        setMockSections(newSections);
+        localStorage.setItem('mockDataSections', JSON.stringify(newSections));
+    };
+
+    const handleGlobalToggle = (enabled: boolean) => {
+        onToggle(enabled);
+        if (!enabled) {
+            // Se disattiva globale, resetta tutte le sezioni
+            setMockSections({
+                dashboard: false,
+                clients: false,
+                projects: false,
+                contracts: false,
+                events: false
+            });
+            localStorage.setItem('mockDataSections', JSON.stringify({
+                dashboard: false,
+                clients: false,
+                projects: false,
+                contracts: false,
+                events: false
+            }));
+        }
+    };
+
+    const sectionLabels = {
+        dashboard: { label: 'Dashboard', icon: '📊', description: 'Statistiche e KPI fittizi' },
+        clients: { label: 'Clienti', icon: '👥', description: 'Lista clienti simulati' },
+        projects: { label: 'Progetti', icon: '💼', description: 'Progetti e todo list fittizi' },
+        contracts: { label: 'Contabilità', icon: '💰', description: 'Contratti e fatture simulate' },
+        events: { label: 'Eventi/Calendario', icon: '📅', description: 'Eventi e chiamate fittizie' }
+    };
+
     return (
         <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-lg font-semibold mb-4">Modalità Sviluppo</h3>
-            <div className="flex items-center justify-between p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <div>
-                    <p className="font-medium">Attiva Dati di Simulazione (Mock Data)</p>
-                    <p className="text-sm text-gray-600 mt-1">
-                        Quando attivo, tutte le chiamate API restituiscono dati finti locali invece di contattare il backend.
-                        Questo permette di testare l'UI senza modificare il database reale.
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <Settings className="w-5 h-5" />
+                Modalità Sviluppo
+            </h3>
+            
+            {/* Toggle Globale */}
+            <div className={`flex items-center justify-between p-6 rounded-lg border-2 transition-all mb-6 ${
+                useMockData 
+                    ? 'bg-yellow-50 border-yellow-300 shadow-lg' 
+                    : 'bg-gray-50 border-gray-200'
+            }`}>
+                <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                        <p className="font-semibold text-lg">Attiva Modalità Mock Data</p>
+                        {useMockData && (
+                            <span className="px-2 py-1 bg-yellow-500 text-white text-xs font-bold rounded-full animate-pulse">
+                                ATTIVO
+                            </span>
+                        )}
+                    </div>
+                    <p className="text-sm text-gray-600">
+                        Attiva la modalità mock per abilitare la selezione di dati fittizi per sezione.
+                        Scegli quali sezioni usare con dati simulati.
                     </p>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
+                <label className="relative inline-flex items-center cursor-pointer ml-6">
                     <input
                         type="checkbox"
                         checked={useMockData}
-                        onChange={(e) => onToggle(e.target.checked)}
+                        onChange={(e) => handleGlobalToggle(e.target.checked)}
                         className="sr-only peer"
                     />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                    <div className="w-14 h-7 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-yellow-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-yellow-500"></div>
                 </label>
             </div>
+
+            {/* Sezioni Mock Configurabili */}
             {useMockData && (
-                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p className="text-sm text-blue-800">
-                        ⚠️ Modalità Mock attiva. I dati visualizzati sono di simulazione e non verranno salvati nel database.
-                    </p>
+                <div className="space-y-4 animate-fadeIn">
+                    <div className="mb-4">
+                        <h4 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                            <Settings className="w-4 h-4" />
+                            Seleziona Sezioni con Mock Data
+                        </h4>
+                        <p className="text-sm text-gray-600 mb-4">
+                            Seleziona quali sezioni devono usare dati fittizi invece di contattare il backend.
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {(Object.keys(sectionLabels) as Array<keyof typeof sectionLabels>).map((section) => {
+                            const config = sectionLabels[section];
+                            const isActive = mockSections[section];
+                            return (
+                                <div
+                                    key={section}
+                                    className={`p-4 rounded-lg border-2 transition-all cursor-pointer hover:shadow-md ${
+                                        isActive
+                                            ? 'bg-green-50 border-green-300'
+                                            : 'bg-gray-50 border-gray-200'
+                                    }`}
+                                    onClick={() => handleSectionToggle(section)}
+                                >
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className="text-2xl">{config.icon}</span>
+                                                <span className="font-semibold text-gray-800">{config.label}</span>
+                                                {isActive && (
+                                                    <span className="px-2 py-0.5 bg-green-500 text-white text-xs font-bold rounded-full">
+                                                        ATTIVO
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <p className="text-xs text-gray-600 mt-1">{config.description}</p>
+                                        </div>
+                                        <label className="relative inline-flex items-center cursor-pointer ml-4">
+                                            <input
+                                                type="checkbox"
+                                                checked={isActive}
+                                                onChange={() => handleSectionToggle(section)}
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="sr-only peer"
+                                            />
+                                            <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+                                        </label>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {/* Banner Informativo */}
+                    <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-300 rounded-lg">
+                        <div className="flex items-start gap-3">
+                            <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                            <div>
+                                <p className="text-sm font-semibold text-blue-800 mb-1">
+                                    ⚠️ Modalità Mock Attiva
+                                </p>
+                                <p className="text-sm text-blue-700">
+                                    Le sezioni selezionate useranno dati di simulazione e non verranno salvate nel database.
+                                    Le altre sezioni continueranno a usare il backend reale.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

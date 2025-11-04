@@ -55,19 +55,40 @@ export default function App() {
         const savedUser = localStorage.getItem('user');
 
         if (token && savedUser) {
-            // Verifica il token
-            authAPI.verify()
-                .then((response: any) => {
-                    setUser(response.user);
+            try {
+                // Prova a parsare l'utente salvato
+                const parsedUser = JSON.parse(savedUser);
+                if (parsedUser && parsedUser.email) {
+                    // Usa l'utente salvato immediatamente per evitare problemi di ruolo
+                    console.log('Utente caricato da localStorage:', parsedUser);
+                    setUser(parsedUser);
                     setIsAuthenticated(true);
+                    // Poi verifica il token in background e aggiorna se necessario
+                    authAPI.verify()
+                        .then((response: any) => {
+                            if (response && response.user) {
+                                console.log('Utente verificato dal backend:', response.user);
+                                setUser(response.user);
+                                localStorage.setItem('user', JSON.stringify(response.user));
+                            }
+                        })
+                        .catch((err: any) => {
+                            // Se la verifica fallisce, mantieni l'utente salvato ma logga l'errore
+                            console.warn('Verifica token fallita, usando utente salvato:', err);
+                        });
                     loadData();
-                })
-                .catch(() => {
+                } else {
+                    // Se l'utente salvato non è valido, rimuovilo
+                    console.error('Utente salvato non valido:', parsedUser);
                     localStorage.removeItem('token');
                     localStorage.removeItem('user');
-                    setIsAuthenticated(false);
-                })
-                .finally(() => setLoading(false));
+                }
+            } catch (error) {
+                console.error('Errore nel parsing dell\'utente salvato:', error);
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+            }
+            setLoading(false);
         } else {
             setLoading(false);
         }
@@ -77,26 +98,54 @@ export default function App() {
     const loadData = async () => {
         try {
             const [clientsData, projectsData, contractsData, usersData, eventsData] = await Promise.all([
-                clientsAPI.getAll(),
-                projectsAPI.getAll(),
-                contractsAPI.getAll(),
-                usersAPI.getAll().catch(() => []), // Fallback se non disponibile
-                eventsAPI.getAll().catch(() => []), // Fallback se non disponibile
+                clientsAPI.getAll().catch((err: any) => {
+                    console.error('Errore caricamento clienti:', err);
+                    return [];
+                }),
+                projectsAPI.getAll().catch((err: any) => {
+                    console.error('Errore caricamento progetti:', err);
+                    return [];
+                }),
+                contractsAPI.getAll().catch((err: any) => {
+                    console.error('Errore caricamento contratti:', err);
+                    return [];
+                }),
+                usersAPI.getAll().catch((err: any) => {
+                    console.error('Errore caricamento utenti:', err);
+                    return [];
+                }),
+                eventsAPI.getAll().catch((err: any) => {
+                    console.error('Errore caricamento eventi:', err);
+                    return [];
+                }),
             ]);
-            setClients(clientsData);
-            setProjects(projectsData);
-            setContracts(contractsData);
-            setUsers(usersData);
-            setEvents(eventsData);
+            // Assicurati che siano sempre array
+            setClients(Array.isArray(clientsData) ? clientsData : []);
+            setProjects(Array.isArray(projectsData) ? projectsData : []);
+            setContracts(Array.isArray(contractsData) ? contractsData : []);
+            setUsers(Array.isArray(usersData) ? usersData : []);
+            setEvents(Array.isArray(eventsData) ? eventsData : []);
         } catch (error) {
-            console.error('Errore nel caricamento dei dati:', error);
+            console.error('Errore generale nel caricamento dei dati:', error);
+            // Imposta array vuoti come fallback
+            setClients([]);
+            setProjects([]);
+            setContracts([]);
+            setUsers([]);
+            setEvents([]);
         }
     };
 
-    const handleLoginSuccess = (userData: any) => {
-        setUser(userData);
-        setIsAuthenticated(true);
-        loadData();
+    const handleLoginSuccess = (userData: any, token?: string) => {
+        // Assicurati che l'utente abbia tutti i campi necessari
+        if (userData) {
+            setUser(userData);
+            setIsAuthenticated(true);
+            // Ricarica i dati dopo il login
+            loadData();
+        } else {
+            console.error('Errore: userData non valido', userData);
+        }
     };
 
     const handleLogout = () => {
@@ -394,12 +443,14 @@ export default function App() {
 
 function Sidebar({ activeView, setActiveView, user, onLogout, className = '', onNavigate }: any) {
     const isAdmin = user?.role === 'Admin' || user?.role === 'IT' || user?.role === 'Responsabile';
+    // Contabilità visibile solo a Commerciale e Tesoreria
+    const canViewContabilita = user?.role === 'Commerciale' || user?.role === 'Tesoreria' || isAdmin;
     
     const navItems = [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { id: 'clienti', label: 'Clienti', icon: Users },
         { id: 'progetti', label: 'Progetti', icon: Briefcase },
-        { id: 'contabilita', label: 'Contabilità', icon: FileText },
+        ...(canViewContabilita ? [{ id: 'contabilita', label: 'Contabilità', icon: FileText }] : []),
         { id: 'calendario', label: 'Calendario', icon: CalendarIcon },
         ...(isAdmin ? [{ id: 'amministrazione', label: 'Amministrazione', icon: Settings }] : []),
     ];
@@ -567,6 +618,18 @@ function StatCard({ title, value, icon: Icon, color }: any) {
 }
 
 function ClientiList({ clients, onUpdateClientStatus, onDeleteClient }: any) {
+    // Assicurati che clients sia sempre un array
+    const clientsList = Array.isArray(clients) ? clients : [];
+    
+    if (clientsList.length === 0) {
+        return (
+            <div className="bg-white rounded-lg shadow-md p-8 text-center">
+                <p className="text-gray-500 text-lg">Nessun cliente presente</p>
+                <p className="text-gray-400 text-sm mt-2">Aggiungi un nuovo cliente utilizzando il pulsante in alto</p>
+            </div>
+        );
+    }
+    
     return (
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
             <table className="w-full divide-y divide-gray-200">
@@ -581,7 +644,7 @@ function ClientiList({ clients, onUpdateClientStatus, onDeleteClient }: any) {
                     </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                    {clients.map((client: any) => (
+                    {clientsList.map((client: any) => (
                         <tr key={client.id} className="hover:bg-gray-50">
                             <td className="px-6 py-4 whitespace-nowrap">
                                 <div className="text-sm font-medium text-gray-900">{client.name}</div>
@@ -619,9 +682,21 @@ function ClientiList({ clients, onUpdateClientStatus, onDeleteClient }: any) {
 }
 
 function ProgettiList({ projects, onUpdateProjectStatus, onAddTodo, onToggleTodo, onUpdateTodoStatus, onDeleteTodo, onDeleteProject, getClientName }: any) {
+    // Assicurati che projects sia sempre un array
+    const projectsList = Array.isArray(projects) ? projects : [];
+    
+    if (projectsList.length === 0) {
+        return (
+            <div className="bg-white rounded-lg shadow-md p-8 text-center">
+                <p className="text-gray-500 text-lg">Nessun progetto presente</p>
+                <p className="text-gray-400 text-sm mt-2">Aggiungi un nuovo progetto utilizzando il pulsante in alto</p>
+            </div>
+        );
+    }
+    
     return (
         <div className="space-y-6">
-            {projects.map((project: any) => (
+            {projectsList.map((project: any) => (
                 <ProjectCard
                     key={project.id}
                     project={project}
@@ -791,6 +866,18 @@ function TodoItem({ todo, onStatusChange, onDelete }: any) {
 }
 
 function ContabilitaList({ contracts, onUpdateContractStatus, onDeleteContract, getClientName, getProjectName }: any) {
+    // Assicurati che contracts sia sempre un array
+    const contractsList = Array.isArray(contracts) ? contracts : [];
+    
+    if (contractsList.length === 0) {
+        return (
+            <div className="bg-white rounded-lg shadow-md p-8 text-center">
+                <p className="text-gray-500 text-lg">Nessun documento presente</p>
+                <p className="text-gray-400 text-sm mt-2">Aggiungi un nuovo documento utilizzando il pulsante in alto</p>
+            </div>
+        );
+    }
+    
     return (
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
             <table className="w-full divide-y divide-gray-200">
@@ -806,7 +893,7 @@ function ContabilitaList({ contracts, onUpdateContractStatus, onDeleteContract, 
                     </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                    {contracts.map((contract: any) => (
+                    {contractsList.map((contract: any) => (
                         <tr key={contract.id} className="hover:bg-gray-50">
                             <td className="px-6 py-4 whitespace-nowrap">
                                 <div className="text-sm font-medium text-gray-900">{contract.type}</div>

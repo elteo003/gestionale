@@ -45,14 +45,22 @@ export default function Calendar({ currentUser }: CalendarProps) {
         try {
             setLoading(true);
             const [eventsData, usersData] = await Promise.all([
-                eventsAPI.getAll({}),
-                usersAPI.getAll(),
+                eventsAPI.getAll({}).catch((err: any) => {
+                    console.error('Errore caricamento eventi:', err);
+                    return [];
+                }),
+                usersAPI.getAll().catch((err: any) => {
+                    console.error('Errore caricamento utenti:', err);
+                    return [];
+                }),
             ]);
-            setEvents(eventsData);
-            setAllUsers(usersData);
+            // Assicurati che siano sempre array
+            setEvents(Array.isArray(eventsData) ? eventsData : []);
+            setAllUsers(Array.isArray(usersData) ? usersData : []);
         } catch (error) {
-            console.error('Errore nel caricamento:', error);
-            alert('Errore nel caricamento degli eventi');
+            console.error('Errore generale nel caricamento:', error);
+            setEvents([]);
+            setAllUsers([]);
         } finally {
             setLoading(false);
         }
