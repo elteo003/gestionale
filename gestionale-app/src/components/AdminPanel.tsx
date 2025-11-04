@@ -39,7 +39,9 @@ export default function AdminPanel({}: AdminPanelProps) {
     // Health check polling
     useEffect(() => {
         const getApiUrl = () => {
-            return localStorage.getItem('customApiUrl') || import.meta.env.VITE_API_URL || 'http://localhost:3000';
+            const url = localStorage.getItem('customApiUrl') || import.meta.env.VITE_API_URL || 'http://localhost:3000';
+            // Rimuovi trailing slash se presente
+            return url.replace(/\/+$/, '');
         };
 
         const checkHealth = async () => {
