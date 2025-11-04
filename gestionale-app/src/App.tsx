@@ -669,7 +669,7 @@ function RenderContent({ activeView, user, ...props }: any) {
         case 'clienti':
             return <ClientiList {...props} />;
         case 'progetti':
-            return <ProgettiList {...props} />;
+            return <ProgettiList {...props} user={user} />;
         case 'contabilita':
             return <ContabilitaList {...props} />;
         case 'calendario':
@@ -836,8 +836,8 @@ function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, on
     // Verifica se l'utente è manager (può gestire team e tasks)
     // I manager possono gestire tutti i progetti o solo quelli della loro area
     const isManager = useMemo(() => {
-        if (!user) {
-            console.warn('ProjectCard: user è null o undefined');
+        if (!user || !user.role) {
+            // Non loggare warning se user non è ancora caricato (evita spam in console)
             return false;
         }
         
@@ -860,17 +860,19 @@ function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, on
         
         const result = isGlobalManager || isAreaManager;
         
-        console.log('ProjectCard isManager check:', {
-            projectId: project.id,
-            projectName: project.name,
-            userRole: role,
-            userArea: userArea,
-            projectArea: projectArea,
-            isGlobalManager,
-            isAreaManager,
-            isManager: result,
-            userObject: user
-        });
+        // Log solo se user è disponibile per debug
+        if (user && user.role) {
+            console.log('ProjectCard isManager check:', {
+                projectId: project.id,
+                projectName: project.name,
+                userRole: role,
+                userArea: userArea,
+                projectArea: projectArea,
+                isGlobalManager,
+                isAreaManager,
+                isManager: result
+            });
+        }
         
         return result;
     }, [user, project.area, project.id, project.name]);
