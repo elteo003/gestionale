@@ -10,6 +10,7 @@ import {
     Trash2,
     CheckCircle,
     Circle,
+    ListTodo,
     X,
     Menu,
     Flag,
@@ -22,7 +23,7 @@ import Login from './components/Login';
 import Calendar from './components/Calendar';
 import AdminPanel from './components/AdminPanel';
 import { DashboardRole } from './components/DashboardRole';
-import { clientsAPI, projectsAPI, contractsAPI, authAPI, usersAPI, eventsAPI } from './services/api.ts';
+import { clientsAPI, projectsAPI, contractsAPI, authAPI, usersAPI, eventsAPI, tasksAPI } from './services/api.ts';
 
 // --- Costanti per le Opzioni ---
 const CLIENT_STATUS_OPTIONS = ['Prospect', 'In Contatto', 'In Negoziazione', 'Attivo', 'Chiuso', 'Perso'];
@@ -447,12 +448,29 @@ function Sidebar({ activeView, setActiveView, user, onLogout, className = '', on
     const canViewContabilita = user?.role === 'Tesoreria' || 
                                 (user?.role === 'Responsabile' && user?.area === 'Commerciale');
     
+    // Verifica se l'utente è un manager/admin
+    const isManager = user && (
+        user.role === 'Admin' || 
+        user.role === 'IT' || 
+        user.role === 'Responsabile' ||
+        user.role === 'Presidente' ||
+        user.role === 'CDA' ||
+        user.role === 'Tesoreria' ||
+        user.role === 'Marketing' ||
+        user.role === 'Commerciale' ||
+        user.role === 'Audit'
+    );
+    
+    // Verifica se l'utente è un associato (non manager/admin)
+    const isAssociate = user && !isManager;
+    
     const navItems = [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { id: 'clienti', label: 'Clienti', icon: Users },
         { id: 'progetti', label: 'Progetti', icon: Briefcase },
         ...(canViewContabilita ? [{ id: 'contabilita', label: 'Contabilità', icon: FileText }] : []),
         { id: 'calendario', label: 'Calendario', icon: CalendarIcon },
+        ...(isAssociate ? [{ id: 'mytasks', label: 'I Miei Task', icon: ListTodo }] : []),
         ...(isAdmin ? [{ id: 'amministrazione', label: 'Amministrazione', icon: Settings }] : []),
     ];
 
@@ -565,6 +583,8 @@ function RenderContent({ activeView, user, ...props }: any) {
             return <ContabilitaList {...props} />;
         case 'calendario':
             return <Calendar currentUser={user || null} />;
+        case 'mytasks':
+            return <MyTasks user={user} />;
         case 'amministrazione':
             return <AdminPanel user={user} />;
         default:
@@ -682,7 +702,7 @@ function ClientiList({ clients, onUpdateClientStatus, onDeleteClient }: any) {
     );
 }
 
-function ProgettiList({ projects, onUpdateProjectStatus, onAddTodo, onToggleTodo, onUpdateTodoStatus, onDeleteTodo, onDeleteProject, getClientName }: any) {
+function ProgettiList({ projects, onUpdateProjectStatus, onAddTodo, onToggleTodo, onUpdateTodoStatus, onDeleteTodo, onDeleteProject, getClientName, user, users }: any) {
     // Assicurati che projects sia sempre un array
     const projectsList = Array.isArray(projects) ? projects : [];
     
@@ -708,16 +728,139 @@ function ProgettiList({ projects, onUpdateProjectStatus, onAddTodo, onToggleTodo
                     onUpdateTodoStatus={onUpdateTodoStatus}
                     onDeleteTodo={onDeleteTodo}
                     onDeleteProject={onDeleteProject}
+                    user={user}
+                    users={users}
                 />
             ))}
         </div>
     );
 }
 
-function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, onToggleTodo, onUpdateTodoStatus, onDeleteTodo, onDeleteProject }: any) {
+function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, onToggleTodo, onUpdateTodoStatus, onDeleteTodo, onDeleteProject, user, users }: any) {
     const [newTodoText, setNewTodoText] = useState('');
     const [newTodoPriority, setNewTodoPriority] = useState('Media');
     const [isExpanded, setIsExpanded] = useState(true);
+    const [activeTab, setActiveTab] = useState<'todos' | 'team' | 'tasks'>('todos');
+    
+    // Nuovi stati per Team e Tasks
+    const [teamMembers, setTeamMembers] = useState<any[]>([]);
+    const [tasks, setTasks] = useState<any[]>([]);
+    const [loadingTeam, setLoadingTeam] = useState(false);
+    const [loadingTasks, setLoadingTasks] = useState(false);
+    const [selectedUserId, setSelectedUserId] = useState('');
+    const [newTaskDescription, setNewTaskDescription] = useState('');
+    const [newTaskPriority, setNewTaskPriority] = useState('Media');
+
+    // Verifica se l'utente è manager (può gestire team e tasks)
+    const isManager = user && (
+        user.role === 'Admin' || 
+        user.role === 'IT' || 
+        user.role === 'Responsabile' ||
+        (user.role === 'Marketing' && user.area === project.area) ||
+        (user.role === 'Commerciale' && user.area === project.area)
+    );
+
+    // Carica team quando si apre il tab Team
+    useEffect(() => {
+        if (activeTab === 'team' && isManager) {
+            loadTeam();
+        }
+    }, [activeTab, project.id, isManager]);
+
+    // Carica tasks quando si apre il tab Tasks
+    useEffect(() => {
+        if (activeTab === 'tasks' && isManager) {
+            loadTasks();
+        }
+    }, [activeTab, project.id, isManager]);
+
+    const loadTeam = async () => {
+        setLoadingTeam(true);
+        try {
+            const team = await projectsAPI.getTeam(project.id);
+            setTeamMembers(team || []);
+        } catch (error: any) {
+            console.error('Errore caricamento team:', error);
+            alert(error.message || 'Errore nel caricamento del team');
+        } finally {
+            setLoadingTeam(false);
+        }
+    };
+
+    const loadTasks = async () => {
+        setLoadingTasks(true);
+        try {
+            const projectTasks = await projectsAPI.getTasks(project.id);
+            setTasks(projectTasks || []);
+        } catch (error: any) {
+            console.error('Errore caricamento tasks:', error);
+            alert(error.message || 'Errore nel caricamento dei tasks');
+        } finally {
+            setLoadingTasks(false);
+        }
+    };
+
+    const handleAddTeamMember = async () => {
+        if (!selectedUserId) {
+            alert('Seleziona un utente');
+            return;
+        }
+        try {
+            await projectsAPI.addTeamMember(project.id, selectedUserId);
+            await loadTeam();
+            setSelectedUserId('');
+        } catch (error: any) {
+            alert(error.message || 'Errore nell\'aggiunta del membro');
+        }
+    };
+
+    const handleRemoveTeamMember = async (userId: string) => {
+        if (!confirm('Rimuovere questo membro dal team?')) return;
+        try {
+            await projectsAPI.removeTeamMember(project.id, userId);
+            await loadTeam();
+        } catch (error: any) {
+            alert(error.message || 'Errore nella rimozione del membro');
+        }
+    };
+
+    const handleCreateTask = async (e: any) => {
+        e.preventDefault();
+        if (!newTaskDescription.trim()) {
+            alert('Inserisci una descrizione per il task');
+            return;
+        }
+        try {
+            await projectsAPI.createTask(project.id, {
+                description: newTaskDescription,
+                priority: newTaskPriority
+            });
+            setNewTaskDescription('');
+            setNewTaskPriority('Media');
+            await loadTasks();
+        } catch (error: any) {
+            alert(error.message || 'Errore nella creazione del task');
+        }
+    };
+
+    const handleAssignTask = async (taskId: string, userId: string) => {
+        try {
+            await tasksAPI.assignTask(taskId, userId);
+            await loadTasks();
+        } catch (error: any) {
+            alert(error.message || 'Errore nell\'assegnazione del task');
+        }
+    };
+
+    const handleDeleteTask = async (taskId: string) => {
+        if (!confirm('Eliminare questo task?')) return;
+        try {
+            await projectsAPI.deleteTask(project.id, taskId);
+            await loadTasks();
+        } catch (error: any) {
+            alert(error.message || 'Errore nell\'eliminazione del task');
+        }
+    };
 
     const handleAddTodo = (e: any) => {
         e.preventDefault();
@@ -727,6 +870,19 @@ function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, on
             setNewTodoPriority('Media');
         }
     };
+
+    // Filtra utenti per area del progetto (per il team)
+    const availableUsers = users.filter((u: any) => 
+        u.area === project.area && 
+        !teamMembers.find((tm: any) => tm.id === u.id)
+    );
+
+    // Separa tasks: backlog (non assegnati) e assegnati (per membro)
+    const backlogTasks = tasks.filter((t: any) => !t.assignedTo);
+    const assignedTasksByMember = teamMembers.map((member: any) => ({
+        member,
+        tasks: tasks.filter((t: any) => t.assignedTo === member.id)
+    }));
 
     return (
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
@@ -759,42 +915,292 @@ function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, on
 
             {isExpanded && (
                 <div className="p-4">
-                    <h4 className="text-sm font-medium text-gray-500 mb-2">To-do List</h4>
-                    <div className="space-y-2 mb-4">
-                        {project.todos && project.todos.length > 0 ? project.todos.map((todo: any) => (
-                            <TodoItem
-                                key={todo.id}
-                                todo={todo}
-                                onStatusChange={(status: string) => onUpdateTodoStatus(project.id, todo.id, status)}
-                                onDelete={() => onDeleteTodo(project.id, todo.id)}
-                            />
-                        )) : (
-                            <div className="text-sm text-gray-400 italic">Nessun task ancora aggiunto.</div>
-                        )}
-                    </div>
+                    {/* Tabs per Manager */}
+                    {isManager && (
+                        <div className="flex space-x-2 mb-4 border-b border-gray-200">
+                            <button
+                                onClick={() => setActiveTab('todos')}
+                                className={`px-4 py-2 text-sm font-medium ${
+                                    activeTab === 'todos' 
+                                        ? 'border-b-2 border-indigo-500 text-indigo-600' 
+                                        : 'text-gray-500 hover:text-gray-700'
+                                }`}
+                            >
+                                To-do List (Legacy)
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('team')}
+                                className={`px-4 py-2 text-sm font-medium ${
+                                    activeTab === 'team' 
+                                        ? 'border-b-2 border-indigo-500 text-indigo-600' 
+                                        : 'text-gray-500 hover:text-gray-700'
+                                }`}
+                            >
+                                Team
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('tasks')}
+                                className={`px-4 py-2 text-sm font-medium ${
+                                    activeTab === 'tasks' 
+                                        ? 'border-b-2 border-indigo-500 text-indigo-600' 
+                                        : 'text-gray-500 hover:text-gray-700'
+                                }`}
+                            >
+                                Tasks
+                            </button>
+                        </div>
+                    )}
 
-                    <form onSubmit={handleAddTodo} className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 space-y-2 sm:space-y-0">
-                        <input
-                            type="text"
-                            value={newTodoText}
-                            onChange={(e) => setNewTodoText(e.target.value)}
-                            placeholder="Nuovo task..."
-                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                        />
-                        <select
-                            value={newTodoPriority}
-                            onChange={(e) => setNewTodoPriority(e.target.value)}
-                            className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                        >
-                            {TODO_PRIORITY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                        </select>
-                        <button
-                            type="submit"
-                            className="px-4 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700 transition-colors duration-200"
-                        >
-                            Aggiungi
-                        </button>
-                    </form>
+                    {/* Tab: To-do List (Legacy) */}
+                    {(!isManager || activeTab === 'todos') && (
+                        <div>
+                            <h4 className="text-sm font-medium text-gray-500 mb-2">To-do List</h4>
+                            <div className="space-y-2 mb-4">
+                                {project.todos && project.todos.length > 0 ? project.todos.map((todo: any) => (
+                                    <TodoItem
+                                        key={todo.id}
+                                        todo={todo}
+                                        onStatusChange={(status: string) => onUpdateTodoStatus(project.id, todo.id, status)}
+                                        onDelete={() => onDeleteTodo(project.id, todo.id)}
+                                    />
+                                )) : (
+                                    <div className="text-sm text-gray-400 italic">Nessun task ancora aggiunto.</div>
+                                )}
+                            </div>
+
+                            <form onSubmit={handleAddTodo} className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 space-y-2 sm:space-y-0">
+                                <input
+                                    type="text"
+                                    value={newTodoText}
+                                    onChange={(e) => setNewTodoText(e.target.value)}
+                                    placeholder="Nuovo task..."
+                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                />
+                                <select
+                                    value={newTodoPriority}
+                                    onChange={(e) => setNewTodoPriority(e.target.value)}
+                                    className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                >
+                                    {TODO_PRIORITY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                </select>
+                                <button
+                                    type="submit"
+                                    className="px-4 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700 transition-colors duration-200"
+                                >
+                                    Aggiungi
+                                </button>
+                            </form>
+                        </div>
+                    )}
+
+                    {/* Tab: Team (solo per Manager) */}
+                    {isManager && activeTab === 'team' && (
+                        <div>
+                            <h4 className="text-sm font-medium text-gray-500 mb-4">Team del Progetto</h4>
+                            
+                            {loadingTeam ? (
+                                <div className="text-sm text-gray-400">Caricamento...</div>
+                            ) : (
+                                <>
+                                    {/* Lista membri del team */}
+                                    <div className="space-y-2 mb-4">
+                                        {teamMembers.length > 0 ? (
+                                            teamMembers.map((member: any) => (
+                                                <div key={member.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+                                                    <div>
+                                                        <span className="font-medium text-gray-900">{member.name}</span>
+                                                        <span className="text-sm text-gray-500 ml-2">({member.email})</span>
+                                                        <span className="text-xs text-gray-400 ml-2">- {member.role}</span>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => handleRemoveTeamMember(member.id)}
+                                                        className="text-red-500 hover:text-red-700"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="text-sm text-gray-400 italic">Nessun membro nel team</div>
+                                        )}
+                                    </div>
+
+                                    {/* Aggiungi membro */}
+                                    <div className="border-t pt-4">
+                                        <h5 className="text-sm font-medium text-gray-700 mb-2">Aggiungi membro al team</h5>
+                                        <div className="flex space-x-2">
+                                            <select
+                                                value={selectedUserId}
+                                                onChange={(e) => setSelectedUserId(e.target.value)}
+                                                className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                            >
+                                                <option value="">Seleziona un utente...</option>
+                                                {availableUsers.map((u: any) => (
+                                                    <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
+                                                ))}
+                                            </select>
+                                            <button
+                                                onClick={handleAddTeamMember}
+                                                disabled={!selectedUserId || availableUsers.length === 0}
+                                                className="px-4 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors duration-200"
+                                            >
+                                                Aggiungi
+                                            </button>
+                                        </div>
+                                        {availableUsers.length === 0 && (
+                                            <p className="text-xs text-gray-400 mt-2">Tutti gli utenti dell'area sono già nel team</p>
+                                        )}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Tab: Tasks (solo per Manager) */}
+                    {isManager && activeTab === 'tasks' && (
+                        <div>
+                            <h4 className="text-sm font-medium text-gray-500 mb-4">Gestione Tasks</h4>
+                            
+                            {loadingTasks ? (
+                                <div className="text-sm text-gray-400">Caricamento...</div>
+                            ) : (
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                    {/* Backlog (Task non assegnati) */}
+                                    <div className="bg-gray-50 rounded-lg p-4">
+                                        <h5 className="text-sm font-semibold text-gray-700 mb-3">Backlog (Task da Assegnare)</h5>
+                                        <div className="space-y-2 mb-4 max-h-96 overflow-y-auto">
+                                            {backlogTasks.length > 0 ? (
+                                                backlogTasks.map((task: any) => (
+                                                    <div key={task.id} className="bg-white p-3 rounded-md border border-gray-200">
+                                                        <div className="flex items-start justify-between mb-2">
+                                                            <span className="text-sm text-gray-900 flex-1">{task.description}</span>
+                                                            <button
+                                                                onClick={() => handleDeleteTask(task.id)}
+                                                                className="text-red-500 hover:text-red-700 ml-2"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </button>
+                                                        </div>
+                                                        <div className="flex items-center justify-between">
+                                                            <span className={`text-xs px-2 py-1 rounded-full ${
+                                                                task.priority === 'Alta' ? 'bg-red-100 text-red-700' :
+                                                                task.priority === 'Media' ? 'bg-yellow-100 text-yellow-700' :
+                                                                'bg-green-100 text-green-700'
+                                                            }`}>
+                                                                {task.priority}
+                                                            </span>
+                                                            <select
+                                                                value=""
+                                                                onChange={(e) => {
+                                                                    if (e.target.value) {
+                                                                        handleAssignTask(task.id, e.target.value);
+                                                                    }
+                                                                }}
+                                                                className="text-xs px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500"
+                                                            >
+                                                                <option value="">Assegna a...</option>
+                                                                {teamMembers.map((member: any) => (
+                                                                    <option key={member.id} value={member.id}>{member.name}</option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <div className="text-sm text-gray-400 italic">Nessun task in backlog</div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Task Assegnati (per membro) */}
+                                    <div className="bg-gray-50 rounded-lg p-4">
+                                        <h5 className="text-sm font-semibold text-gray-700 mb-3">Task Assegnati</h5>
+                                        <div className="space-y-4 max-h-96 overflow-y-auto">
+                                            {assignedTasksByMember.length > 0 && assignedTasksByMember.some((g: any) => g.tasks.length > 0) ? (
+                                                assignedTasksByMember
+                                                    .filter((g: any) => g.tasks.length > 0)
+                                                    .map((group: any) => (
+                                                        <div key={group.member.id} className="bg-white p-3 rounded-md border border-gray-200">
+                                                            <h6 className="text-xs font-semibold text-gray-700 mb-2">{group.member.name}</h6>
+                                                            <div className="space-y-2">
+                                                                {group.tasks.map((task: any) => (
+                                                                    <div key={task.id} className="text-sm">
+                                                                        <div className="flex items-center justify-between mb-1">
+                                                                            <span className="text-gray-900">{task.description}</span>
+                                                                            <span className={`text-xs px-2 py-1 rounded-full ${
+                                                                                task.priority === 'Alta' ? 'bg-red-100 text-red-700' :
+                                                                                task.priority === 'Media' ? 'bg-yellow-100 text-yellow-700' :
+                                                                                'bg-green-100 text-green-700'
+                                                                            }`}>
+                                                                                {task.priority}
+                                                                            </span>
+                                                                        </div>
+                                                                        <select
+                                                                            value={task.status}
+                                                                            onChange={(e) => {
+                                                                                // Solo il membro assegnato può cambiare lo status
+                                                                                if (user.id === task.assignedTo) {
+                                                                                    tasksAPI.updateTaskStatus(task.id, e.target.value)
+                                                                                        .then(() => loadTasks())
+                                                                                        .catch((err: any) => alert(err.message || 'Errore nell\'aggiornamento'));
+                                                                                } else {
+                                                                                    alert('Puoi aggiornare solo i tuoi task assegnati');
+                                                                                }
+                                                                            }}
+                                                                            disabled={user.id !== task.assignedTo}
+                                                                            className={`text-xs px-2 py-1 rounded-md border ${
+                                                                                task.status === 'Completato' ? 'bg-green-100 text-green-700 border-green-300' :
+                                                                                task.status === 'In Corso' ? 'bg-yellow-100 text-yellow-700 border-yellow-300' :
+                                                                                task.status === 'In Revisione' ? 'bg-blue-100 text-blue-700 border-blue-300' :
+                                                                                'bg-red-100 text-red-700 border-red-300'
+                                                                            } ${user.id !== task.assignedTo ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                                                                        >
+                                                                            <option value="Da Fare">Da Fare</option>
+                                                                            <option value="In Corso">In Corso</option>
+                                                                            <option value="In Revisione">In Revisione</option>
+                                                                            <option value="Completato">Completato</option>
+                                                                        </select>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    ))
+                                            ) : (
+                                                <div className="text-sm text-gray-400 italic">Nessun task assegnato</div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Form per creare nuovo task */}
+                            <div className="border-t mt-4 pt-4">
+                                <h5 className="text-sm font-medium text-gray-700 mb-2">Crea nuovo task</h5>
+                                <form onSubmit={handleCreateTask} className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 space-y-2 sm:space-y-0">
+                                    <input
+                                        type="text"
+                                        value={newTaskDescription}
+                                        onChange={(e) => setNewTaskDescription(e.target.value)}
+                                        placeholder="Descrizione del task..."
+                                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                    />
+                                    <select
+                                        value={newTaskPriority}
+                                        onChange={(e) => setNewTaskPriority(e.target.value)}
+                                        className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                    >
+                                        {TODO_PRIORITY_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                    </select>
+                                    <button
+                                        type="submit"
+                                        className="px-4 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700 transition-colors duration-200"
+                                    >
+                                        Crea Task
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
         </div>

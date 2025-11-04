@@ -10,6 +10,7 @@ import projectsRoutes from './routes/projects.js';
 import contractsRoutes from './routes/contracts.js';
 import eventsRoutes from './routes/events.js';
 import usersRoutes from './routes/users.js';
+import tasksRoutes from './routes/tasks.js';
 
 // Load environment variables
 dotenv.config();
@@ -83,6 +84,7 @@ app.use('/api/projects', projectsRoutes);
 app.use('/api/contracts', contractsRoutes);
 app.use('/api/events', eventsRoutes);
 app.use('/api/users', usersRoutes);
+app.use('/api/tasks', tasksRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

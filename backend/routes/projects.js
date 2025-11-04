@@ -292,5 +292,252 @@ router.delete('/:projectId/todos/:todoId', async (req, res) => {
     }
 });
 
+// --- Team Routes ---
+
+// Middleware per verificare se l'utente può gestire il team del progetto
+const canManageTeam = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user.userId;
+        const userRole = req.user.role;
+        
+        // Admin, IT, Responsabile possono gestire tutti i team
+        if (userRole === 'Admin' || userRole === 'IT' || userRole === 'Responsabile') {
+            return next();
+        }
+        
+        // Verifica se l'utente è manager dell'area del progetto
+        const projectResult = await pool.query(
+            `SELECT p.area
+             FROM projects p
+             WHERE p.project_id = $1`,
+            [id]
+        );
+        
+        if (projectResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Progetto non trovato' });
+        }
+        
+        const project = projectResult.rows[0];
+        const userResult = await pool.query(
+            'SELECT area, role FROM users WHERE user_id = $1',
+            [userId]
+        );
+        const user = userResult.rows[0];
+        
+        // Se l'utente è manager dell'area del progetto, può gestire il team
+        if (user.area === project.area && (user.role === 'IT' || user.role === 'Marketing' || user.role === 'Commerciale')) {
+            return next();
+        }
+        
+        res.status(403).json({ error: 'Accesso negato. Solo manager dell\'area possono gestire il team.' });
+    } catch (error) {
+        console.error('Errore verifica permessi team:', error);
+        res.status(500).json({ error: 'Errore interno del server' });
+    }
+};
+
+// GET /api/projects/:id/team - Restituisce gli utenti assegnati al progetto
+router.get('/:id/team', async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        const result = await pool.query(
+            `SELECT u.user_id as id, u.name, u.email, u.area, u.role, pa.created_at as "assignedAt"
+             FROM project_assignments pa
+             JOIN users u ON pa.user_id = u.user_id
+             WHERE pa.project_id = $1
+             ORDER BY pa.created_at ASC`,
+            [id]
+        );
+        
+        res.json(result.rows);
+    } catch (error) {
+        console.error('Errore recupero team:', error);
+        res.status(500).json({ error: 'Errore interno del server' });
+    }
+});
+
+// POST /api/projects/:id/team - Aggiunge un utente al team del progetto
+router.post('/:id/team', canManageTeam, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { userId } = req.body;
+        
+        if (!userId) {
+            return res.status(400).json({ error: 'User ID richiesto' });
+        }
+        
+        // Verifica che l'utente esista
+        const userCheck = await pool.query(
+            'SELECT user_id, area FROM users WHERE user_id = $1',
+            [userId]
+        );
+        
+        if (userCheck.rows.length === 0) {
+            return res.status(404).json({ error: 'Utente non trovato' });
+        }
+        
+        // Verifica che il progetto esista e ottieni la sua area
+        const projectCheck = await pool.query(
+            'SELECT project_id, area FROM projects WHERE project_id = $1',
+            [id]
+        );
+        
+        if (projectCheck.rows.length === 0) {
+            return res.status(404).json({ error: 'Progetto non trovato' });
+        }
+        
+        const projectArea = projectCheck.rows[0].area;
+        const userArea = userCheck.rows[0].area;
+        
+        // Verifica che l'utente appartenga alla stessa area del progetto (opzionale, ma raccomandato)
+        if (projectArea && userArea && projectArea !== userArea) {
+            return res.status(400).json({ error: 'L\'utente deve appartenere alla stessa area del progetto' });
+        }
+        
+        // Verifica se l'utente è già assegnato
+        const existingCheck = await pool.query(
+            'SELECT assignment_id FROM project_assignments WHERE project_id = $1 AND user_id = $2',
+            [id, userId]
+        );
+        
+        if (existingCheck.rows.length > 0) {
+            return res.status(400).json({ error: 'Utente già assegnato a questo progetto' });
+        }
+        
+        const result = await pool.query(
+            `INSERT INTO project_assignments (project_id, user_id)
+             VALUES ($1, $2)
+             RETURNING assignment_id as id, project_id as "projectId", user_id as "userId", created_at as "createdAt"`,
+            [id, userId]
+        );
+        
+        // Recupera i dati completi dell'utente
+        const userResult = await pool.query(
+            'SELECT user_id as id, name, email, area, role FROM users WHERE user_id = $1',
+            [userId]
+        );
+        
+        res.status(201).json({ ...result.rows[0], user: userResult.rows[0] });
+    } catch (error) {
+        console.error('Errore aggiunta membro team:', error);
+        if (error.code === '23505') { // Unique constraint violation
+            return res.status(400).json({ error: 'Utente già assegnato a questo progetto' });
+        }
+        res.status(500).json({ error: 'Errore interno del server' });
+    }
+});
+
+// DELETE /api/projects/:id/team/:userId - Rimuove un utente dal team
+router.delete('/:id/team/:userId', canManageTeam, async (req, res) => {
+    try {
+        const { id, userId } = req.params;
+        
+        const result = await pool.query(
+            'DELETE FROM project_assignments WHERE project_id = $1 AND user_id = $2 RETURNING assignment_id',
+            [id, userId]
+        );
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Assegnazione non trovata' });
+        }
+        
+        res.json({ message: 'Utente rimosso dal team con successo' });
+    } catch (error) {
+        console.error('Errore rimozione membro team:', error);
+        res.status(500).json({ error: 'Errore interno del server' });
+    }
+});
+
+// --- Tasks Routes (Nuova tabella tasks) ---
+
+// GET /api/projects/:id/tasks - Restituisce tutti i task per un progetto
+router.get('/:id/tasks', async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        const result = await pool.query(
+            `SELECT t.task_id as id, t.description, t.status, t.priority, 
+                    t.assigned_to_user_id as "assignedTo", t.created_at as "createdAt", t.updated_at as "updatedAt",
+                    u.name as "assignedToName", u.email as "assignedToEmail"
+             FROM tasks t
+             LEFT JOIN users u ON t.assigned_to_user_id = u.user_id
+             WHERE t.project_id = $1
+             ORDER BY 
+                 CASE WHEN t.assigned_to_user_id IS NULL THEN 0 ELSE 1 END,
+                 CASE t.priority 
+                     WHEN 'Alta' THEN 1 
+                     WHEN 'Media' THEN 2 
+                     WHEN 'Bassa' THEN 3 
+                 END,
+                 t.created_at ASC`,
+            [id]
+        );
+        
+        res.json(result.rows);
+    } catch (error) {
+        console.error('Errore recupero tasks:', error);
+        res.status(500).json({ error: 'Errore interno del server' });
+    }
+});
+
+// POST /api/projects/:id/tasks - Crea un nuovo task per il progetto (non ancora assegnato)
+router.post('/:id/tasks', canManageTeam, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { description, priority } = req.body;
+        const userId = req.user.userId;
+        
+        if (!description) {
+            return res.status(400).json({ error: 'Descrizione del task è obbligatoria' });
+        }
+        
+        // Verifica che il progetto esista
+        const projectCheck = await pool.query(
+            'SELECT project_id FROM projects WHERE project_id = $1',
+            [id]
+        );
+        
+        if (projectCheck.rows.length === 0) {
+            return res.status(404).json({ error: 'Progetto non trovato' });
+        }
+        
+        const result = await pool.query(
+            `INSERT INTO tasks (project_id, description, priority, created_by, assigned_to_user_id)
+             VALUES ($1, $2, $3, $4, NULL)
+             RETURNING task_id as id, description, status, priority, 
+                       assigned_to_user_id as "assignedTo", created_at as "createdAt", updated_at as "updatedAt"`,
+            [id, description, priority || 'Media', userId]
+        );
+        
+        res.status(201).json(result.rows[0]);
+    } catch (error) {
+        console.error('Errore creazione task:', error);
+        res.status(500).json({ error: 'Errore interno del server' });
+    }
+});
+
+// DELETE /api/projects/:id/tasks/:taskId - Elimina un task
+router.delete('/:id/tasks/:taskId', canManageTeam, async (req, res) => {
+    try {
+        const { id, taskId } = req.params;
+        
+        const result = await pool.query(
+            'DELETE FROM tasks WHERE task_id = $1 AND project_id = $2 RETURNING task_id',
+            [taskId, id]
+        );
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Task non trovato' });
+        }
+        
+        res.json({ message: 'Task eliminato con successo' });
+    } catch (error) {
+        console.error('Errore eliminazione task:', error);
+        res.status(500).json({ error: 'Errore interno del server' });
+    }
+});
+
 export default router;
 

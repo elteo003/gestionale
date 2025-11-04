@@ -229,6 +229,30 @@ export const projectsAPI = {
         apiCall(`/api/projects/${projectId}/todos/${todoId}`, {
             method: 'DELETE',
         }),
+    // Team Management
+    getTeam: (projectId: string) =>
+        apiCall(`/api/projects/${projectId}/team`),
+    addTeamMember: (projectId: string, userId: string) =>
+        apiCall(`/api/projects/${projectId}/team`, {
+            method: 'POST',
+            body: JSON.stringify({ userId }),
+        }),
+    removeTeamMember: (projectId: string, userId: string) =>
+        apiCall(`/api/projects/${projectId}/team/${userId}`, {
+            method: 'DELETE',
+        }),
+    // Tasks Management (nuova tabella tasks)
+    getTasks: (projectId: string) =>
+        apiCall(`/api/projects/${projectId}/tasks`),
+    createTask: (projectId: string, task: any) =>
+        apiCall(`/api/projects/${projectId}/tasks`, {
+            method: 'POST',
+            body: JSON.stringify(task),
+        }),
+    deleteTask: (projectId: string, taskId: string) =>
+        apiCall(`/api/projects/${projectId}/tasks/${taskId}`, {
+            method: 'DELETE',
+        }),
 };
 
 // Contracts API
@@ -315,6 +339,21 @@ export const usersAPI = {
         apiCall(`/api/users/${id}/status`, {
             method: 'PATCH',
             body: JSON.stringify({ isActive }),
+        }),
+};
+
+// Tasks API
+export const tasksAPI = {
+    getMyTasks: () => apiCall('/api/tasks/mytasks'),
+    assignTask: (taskId: string, userId: string) =>
+        apiCall(`/api/tasks/${taskId}/assign`, {
+            method: 'PUT',
+            body: JSON.stringify({ userId }),
+        }),
+    updateTaskStatus: (taskId: string, status: string) =>
+        apiCall(`/api/tasks/${taskId}/status`, {
+            method: 'PUT',
+            body: JSON.stringify({ status }),
         }),
 };
 
