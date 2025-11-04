@@ -155,6 +155,22 @@ app.listen(PORT, async () => {
     console.log(`🔐 JWT Secret: ${process.env.JWT_SECRET ? 'Configurato ✅' : 'NON CONFIGURATO ⚠️'}`);
     console.log('═══════════════════════════════════════════════════════════\n');
     
+    // Verifica che le route siano state registrate
+    console.log('🔍 Verifica route registrate:');
+    const routes = [];
+    app._router.stack.forEach((middleware) => {
+        if (middleware.route) {
+            routes.push(`${Object.keys(middleware.route.methods)[0].toUpperCase()} ${middleware.route.path}`);
+        } else if (middleware.name === 'router') {
+            if (middleware.regexp) {
+                const path = middleware.regexp.source.replace(/\\\/?/g, '/').replace(/\^/g, '').replace(/\$/g, '');
+                routes.push(`ROUTER ${path}`);
+            }
+        }
+    });
+    routes.forEach(r => console.log(`   ${r}`));
+    console.log('═══════════════════════════════════════════════════════════\n');
+    
     if (!process.env.DATABASE_URL) {
         console.error('⚠️  ATTENZIONE: DATABASE_URL non è configurato!');
     }
