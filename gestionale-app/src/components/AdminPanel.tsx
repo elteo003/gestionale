@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Users, Activity, Database, Settings, Edit2, Key, Power, PowerOff, Plus, X, AlertCircle, CheckCircle, RefreshCw } from 'lucide-react';
+import { Users, Activity, Database, Settings, Edit2, Key, Power, PowerOff, Plus, X, AlertCircle, CheckCircle, RefreshCw, Server } from 'lucide-react';
 import DiagnosticsModal from './DiagnosticsModal';
 
 // Mock data per testing

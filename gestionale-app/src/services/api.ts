@@ -405,7 +405,6 @@ function getMockData(endpoint: string, options: RequestInit = {}): Promise<any> 
             else if (endpoint.includes('/api/projects')) {
                 if (options.method === 'GET' && !endpoint.includes('/api/projects/') || endpoint.includes('/todos')) {
                     if (endpoint.includes('/todos')) {
-                        const projectId = endpoint.split('/')[3];
                         // Task generici per progetti
                         resolve([
                             { id: '1', text: 'Setup iniziale progetto', completed: false, priority: 'Alta', status: 'da fare', createdAt: new Date().toISOString(), updated_at: new Date().toISOString() },

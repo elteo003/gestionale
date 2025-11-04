@@ -19,8 +19,6 @@ export interface UpdateOptions {
  */
 export async function updateWithConflictHandling(options: UpdateOptions): Promise<any> {
     const {
-        entityId,
-        entityType,
         currentVersion,
         updateData,
         updateFunction,

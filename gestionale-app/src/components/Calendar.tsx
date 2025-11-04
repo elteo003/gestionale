@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Clock, Users, CheckCircle, XCircle, Phone, AlertCircle } from 'lucide-react';
-import { eventsAPI, usersAPI } from '../services/api.ts';
+import { Plus, Clock, Users, CheckCircle, XCircle, Phone, AlertCircle, Briefcase } from 'lucide-react';
+import { eventsAPI, usersAPI, projectsAPI } from '../services/api.ts';
 
 interface Event {
     id: string;
@@ -127,7 +127,8 @@ export default function Calendar({ currentUser }: CalendarProps) {
     };
 
     // Ottieni progetti assegnati per un giorno specifico (mostra progetti come eventi nel calendario)
-    const getProjectsForDay = (day: number | null) => {
+    // Funzione preparata per future implementazioni con deadline
+    const _getProjectsForDay = (day: number | null) => {
         if (day === null) return [];
         // I progetti assegnati vengono mostrati ogni giorno (non hanno una data specifica)
         // Potresti anche filtrare per data se aggiungi un campo deadline al progetto

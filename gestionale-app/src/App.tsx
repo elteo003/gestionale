@@ -489,7 +489,6 @@ export default function App() {
                         onUpdateProjectStatus={updateProjectStatus}
                         onUpdateContractStatus={updateContractStatus}
                         onAddTodo={addTodoToProject}
-                        onToggleTodo={toggleTodo}
                         onUpdateTodoStatus={updateTodoStatus}
                         onDeleteTodo={deleteTodo}
                         onDeleteClient={deleteClient}
@@ -514,11 +513,11 @@ export default function App() {
                     conflictData={conflictDialog.conflictData}
                     entityType={conflictDialog.entityType}
                     onResolve={async (resolution: 'yours' | 'server' | 'merged', mergedData?: Record<string, any>) => {
-                        if (!conflictDialog) return;
+                        if (!conflictDialog || !conflictDialog.conflictData) return;
                         
                         try {
                             let dataToSave = mergedData || conflictDialog.conflictData.yourChanges;
-                            const serverVersion = conflictDialog.conflictData.serverData.version;
+                            const serverVersion = conflictDialog.conflictData.serverData?.version;
                             
                             if (resolution === 'server') {
                                 // Ricarica i dati dal server
@@ -732,24 +731,7 @@ function Dashboard({ user, clients, projects, contracts, users, events }: any) {
     return <DashboardRole user={user} clients={clients} projects={projects} contracts={contracts} users={users} events={events} />;
 }
 
-function StatCard({ title, value, icon: Icon, color }: any) {
-    const colors: any = {
-        blue: 'bg-blue-100 text-blue-600',
-        green: 'bg-green-100 text-green-600',
-        orange: 'bg-orange-100 text-orange-600',
-    };
-    return (
-        <div className="bg-white p-6 rounded-lg shadow-md flex items-center">
-            <div className={`p-3 rounded-full ${colors[color] || 'bg-gray-100 text-gray-600'} mr-4`}>
-                <Icon className="w-6 h-6" />
-            </div>
-            <div>
-                <div className="text-gray-500 text-sm">{title}</div>
-                <div className="text-3xl font-bold text-gray-900">{value}</div>
-            </div>
-        </div>
-    );
-}
+// StatCard non utilizzato - rimosso per evitare warning TypeScript
 
 function ClientiList({ clients, onUpdateClientStatus, onDeleteClient }: any) {
     // Assicurati che clients sia sempre un array
@@ -815,7 +797,7 @@ function ClientiList({ clients, onUpdateClientStatus, onDeleteClient }: any) {
     );
 }
 
-function ProgettiList({ projects, onUpdateProjectStatus, onAddTodo, onToggleTodo, onUpdateTodoStatus, onDeleteTodo, onDeleteProject, getClientName, user, users }: any) {
+function ProgettiList({ projects, onUpdateProjectStatus, onAddTodo, onUpdateTodoStatus, onDeleteTodo, onDeleteProject, getClientName, user, users }: any) {
     // Assicurati che projects sia sempre un array
     const projectsList = Array.isArray(projects) ? projects : [];
     
