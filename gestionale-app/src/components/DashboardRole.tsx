@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Users, Briefcase, FileText, TrendingUp, DollarSign, AlertCircle, CheckCircle, Clock } from 'lucide-react';
 
 // Componenti base
@@ -55,7 +55,6 @@ function calculateKPIs(clients: any[], projects: any[], contracts: any[], users:
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
     const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     
     const kpis: any = {};
     
@@ -386,7 +385,7 @@ export function DashboardRole({ user, clients, projects, contracts, users, event
                                         fill="#8884d8"
                                         dataKey="count"
                                     >
-                                        {kpis.progettiPerArea.map((entry: any, index: number) => (
+                                        {kpis.progettiPerArea.map((_entry: any, index: number) => (
                                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                         ))}
                                     </Pie>

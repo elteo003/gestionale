@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Users, Activity, Database, Settings, Trash2, Edit2, Key, Power, PowerOff, Plus, X, AlertCircle, CheckCircle, RefreshCw, Wifi, WifiOff, Server, Loader } from 'lucide-react';
+import { Users, Activity, Database, Settings, Edit2, Key, Power, PowerOff, Plus, X, AlertCircle, CheckCircle, RefreshCw } from 'lucide-react';
 import DiagnosticsModal from './DiagnosticsModal';
 
 // Mock data per testing
@@ -16,11 +16,11 @@ interface AdminPanelProps {
     user: any;
 }
 
-export default function AdminPanel({ user }: AdminPanelProps) {
+export default function AdminPanel({}: AdminPanelProps) {
     const [activeTab, setActiveTab] = useState<'users' | 'health' | 'mock' | 'online'>('users');
     const [users, setUsers] = useState<any[]>([]);
     const [onlineUsers, setOnlineUsers] = useState<any[]>([]);
-    const [healthStatus, setHealthStatus] = useState<{ api: 'ok' | 'error', db: 'ok' | 'error', lastCheck?: string }>({ api: 'ok', db: 'ok' });
+    const [healthStatus, setHealthStatus] = useState<{ api: 'ok' | 'error', db: 'ok' | 'error', lastCheck?: string, responseTime?: number, error?: string }>({ api: 'ok', db: 'ok' });
     const [useMockData, setUseMockData] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -322,7 +322,7 @@ export default function AdminPanel({ user }: AdminPanelProps) {
                         users={users}
                         loading={loading}
                         onCreateClick={() => setIsCreateModalOpen(true)}
-                        onEditClick={(user) => {
+                        onEditClick={(user: any) => {
                             setSelectedUser(user);
                             setIsEditModalOpen(true);
                         }}
@@ -365,7 +365,7 @@ export default function AdminPanel({ user }: AdminPanelProps) {
                         setIsEditModalOpen(false);
                         setSelectedUser(null);
                     }}
-                    onSubmit={(updates) => handleUpdateUser(selectedUser.id, updates)}
+                    onSubmit={(updates: any) => handleUpdateUser(selectedUser.id, updates)}
                 />
             )}
 
@@ -468,9 +468,6 @@ function UsersManagement({ users, loading, onCreateClick, onEditClick, onResetPa
 
 // Componente Health Check
 function HealthCheck({ healthStatus, onDiagnosticsClick }: any) {
-    const getApiUrl = () => {
-        return localStorage.getItem('customApiUrl') || import.meta.env.VITE_API_URL || 'http://localhost:3000';
-    };
 
     const formatLastCheck = () => {
         if (!healthStatus.lastCheck) return 'Mai controllato';

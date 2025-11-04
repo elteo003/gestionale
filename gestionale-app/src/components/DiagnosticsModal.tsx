@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, CheckCircle, AlertCircle, Activity, Settings, RefreshCw, Loader, Server, Database } from 'lucide-react';
+import { X, CheckCircle, AlertCircle, Activity, Settings, RefreshCw } from 'lucide-react';
 
 interface DiagnosticsModalProps {
     type: 'api' | 'db';

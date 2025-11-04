@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { tasksAPI, projectsAPI } from '../services/api.ts';
+import { tasksAPI } from '../services/api.ts';
 import { CheckCircle, Clock, AlertCircle, Circle } from 'lucide-react';
 
 interface MyTasksProps {

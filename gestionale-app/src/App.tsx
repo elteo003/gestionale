@@ -8,12 +8,9 @@ import {
     ChevronDown,
     ChevronRight,
     Trash2,
-    CheckCircle,
-    Circle,
     ListTodo,
     X,
     Menu,
-    Flag,
     LogOut,
     User,
     CalendarIcon,
@@ -23,7 +20,9 @@ import Login from './components/Login';
 import Calendar from './components/Calendar';
 import AdminPanel from './components/AdminPanel';
 import MyTasks from './components/MyTasks';
+import ConflictDialog from './components/ConflictDialog';
 import { DashboardRole } from './components/DashboardRole';
+import { ConflictData } from './utils/conflictResolver';
 import { clientsAPI, projectsAPI, contractsAPI, authAPI, usersAPI, eventsAPI, tasksAPI } from './services/api.ts';
 
 // --- Costanti per le Opzioni ---
@@ -148,7 +147,7 @@ export default function App() {
         }
     };
 
-    const handleLoginSuccess = (userData: any, token?: string) => {
+    const handleLoginSuccess = (userData: any) => {
         // Assicurati che l'utente abbia tutti i campi necessari
         if (userData) {
             setUser(userData);
@@ -185,7 +184,6 @@ export default function App() {
 
     const updateClientStatus = async (clientId: string, status: string) => {
         try {
-            const client = clients.find(c => c.id === clientId);
             const updated = await clientsAPI.updateStatus(clientId, status);
             setClients(clients.map(c => c.id === clientId ? { ...c, ...updated, version: updated.version || c.version } : c));
         } catch (error: any) {
@@ -203,7 +201,7 @@ export default function App() {
                     entityId: clientId,
                     originalData: client,
                     updateFunction: async (data: any, version?: number) => {
-                        const updated = await clientsAPI.update({ ...data, expectedVersion: version });
+                        const updated = await clientsAPI.update(clientId, { ...data, expectedVersion: version });
                         setClients(clients.map(c => c.id === clientId ? { ...c, ...updated } : c));
                     }
                 });
@@ -240,7 +238,6 @@ export default function App() {
 
     const updateProjectStatus = async (projectId: string, status: string) => {
         try {
-            const project = projects.find(p => p.id === projectId);
             const updated = await projectsAPI.updateStatus(projectId, status);
             setProjects(projects.map(p => p.id === projectId ? { ...p, status: updated.status, version: updated.version || p.version } : p));
         } catch (error: any) {
@@ -311,7 +308,6 @@ export default function App() {
         try {
             // Mappa gli stati italiani a completed
             const completed = status === 'terminato';
-            const inProgress = status === 'in corso';
             
             // Se è "terminato", imposta completed = true
             // Se è "da fare", imposta completed = false
@@ -356,7 +352,6 @@ export default function App() {
 
     const updateContractStatus = async (contractId: string, status: string) => {
         try {
-            const contract = contracts.find(c => c.id === contractId);
             const updated = await contractsAPI.updateStatus(contractId, status);
             setContracts(contracts.map(c => c.id === contractId ? { ...c, ...updated, version: updated.version || c.version } : c));
         } catch (error: any) {
@@ -518,7 +513,7 @@ export default function App() {
                     onClose={() => setConflictDialog(null)}
                     conflictData={conflictDialog.conflictData}
                     entityType={conflictDialog.entityType}
-                    onResolve={async (resolution, mergedData) => {
+                    onResolve={async (resolution: 'yours' | 'server' | 'merged', mergedData?: Record<string, any>) => {
                         if (!conflictDialog) return;
                         
                         try {
@@ -842,7 +837,6 @@ function ProgettiList({ projects, onUpdateProjectStatus, onAddTodo, onToggleTodo
                     clientName={getClientName(project.clientId)}
                     onUpdateProjectStatus={onUpdateProjectStatus}
                     onAddTodo={onAddTodo}
-                    onToggleTodo={onToggleTodo}
                     onUpdateTodoStatus={onUpdateTodoStatus}
                     onDeleteTodo={onDeleteTodo}
                     onDeleteProject={onDeleteProject}
@@ -854,7 +848,7 @@ function ProgettiList({ projects, onUpdateProjectStatus, onAddTodo, onToggleTodo
     );
 }
 
-function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, onToggleTodo, onUpdateTodoStatus, onDeleteTodo, onDeleteProject, user, users }: any) {
+function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, onUpdateTodoStatus, onDeleteTodo, onDeleteProject, user, users }: any) {
     const [newTodoText, setNewTodoText] = useState('');
     const [newTodoPriority, setNewTodoPriority] = useState('Media');
     const [isExpanded, setIsExpanded] = useState(true);

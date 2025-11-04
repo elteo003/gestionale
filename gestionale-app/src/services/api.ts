@@ -64,13 +64,6 @@ function shouldMockRelatedDataForDashboard(endpoint: string): boolean {
     return false;
 }
 
-// Funzione helper per verificare se la dashboard è mockata (usata dentro getMockData)
-function isDashboardMocked(): boolean {
-    const mockSections = JSON.parse(localStorage.getItem('mockDataSections') || '{}');
-    const globalMock = localStorage.getItem('useMockData') === 'true';
-    // La dashboard è mockata se è esplicitamente attivata OPPURE se il mock globale è attivo e non è esplicitamente disattivata
-    return mockSections.dashboard === true || (globalMock && mockSections.dashboard !== false);
-}
 
 // Funzione helper per le chiamate API
 async function apiCall(endpoint: string, options: RequestInit = {}): Promise<any> {
@@ -84,12 +77,12 @@ async function apiCall(endpoint: string, options: RequestInit = {}): Promise<any
         
         // Se mock data è attivo per questa sezione, restituisci dati finti
         if (shouldUseMockData(section, endpoint)) {
-            return getMockData(endpoint, options, section);
+            return getMockData(endpoint, options);
         }
         
         // Se la dashboard è mockata e servono dati correlati per i KPI, mockali anche se non sono attivi individualmente
         if (shouldMockRelatedDataForDashboard(endpoint)) {
-            return getMockData(endpoint, options, section);
+            return getMockData(endpoint, options);
         }
     }
     const token = localStorage.getItem('token');
@@ -368,7 +361,7 @@ export const tasksAPI = {
 };
 
 // Funzione per generare mock data in base all'endpoint e sezione
-function getMockData(endpoint: string, options: RequestInit = {}, section?: string): Promise<any> {
+function getMockData(endpoint: string, options: RequestInit = {}): Promise<any> {
     // Simula un delay di rete
     return new Promise((resolve) => {
         setTimeout(() => {
