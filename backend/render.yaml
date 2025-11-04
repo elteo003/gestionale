@@ -16,7 +16,7 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: FRONTEND_URL
-        value: https://gestionale-frontend.onrender.com
+        value: https://gestionale-i5bj.onrender.com
     healthCheckPath: /health
 
 databases:
