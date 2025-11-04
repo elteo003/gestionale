@@ -38,6 +38,44 @@ router.get('/', async (req, res) => {
     }
 });
 
+// GET /api/projects/my - Restituisce i progetti assegnati all'utente corrente
+router.get('/my', async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        
+        // Verifica se la tabella project_assignments esiste
+        const tableCheck = await pool.query(
+            `SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_schema = 'public' 
+                AND table_name = 'project_assignments'
+            )`
+        );
+        
+        if (!tableCheck.rows[0].exists) {
+            // La tabella non esiste ancora, probabilmente la migration non è stata eseguita
+            return res.json([]);
+        }
+        
+        const result = await pool.query(
+            `SELECT p.project_id as id, p.name, p.client_id as "clientId", 
+                    p.area, p.status, p.created_at as "createdAt", p.version,
+                    c.name as "clientName", pa.created_at as "assignedAt"
+             FROM projects p
+             JOIN project_assignments pa ON p.project_id = pa.project_id
+             LEFT JOIN clients c ON p.client_id = c.client_id
+             WHERE pa.user_id = $1
+             ORDER BY p.created_at DESC`,
+            [userId]
+        );
+
+        res.json(result.rows);
+    } catch (error) {
+        console.error('Errore recupero progetti assegnati:', error);
+        res.status(500).json({ error: 'Errore interno del server' });
+    }
+});
+
 // GET /api/projects/:id - Dettaglio progetto
 router.get('/:id', async (req, res) => {
     try {

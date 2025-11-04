@@ -200,6 +200,7 @@ export const clientsAPI = {
 // Projects API
 export const projectsAPI = {
     getAll: () => apiCall('/api/projects'),
+    getMyProjects: () => apiCall('/api/projects/my'),
     getById: (id: string) => apiCall(`/api/projects/${id}`),
     create: (project: any) =>
         apiCall('/api/projects', {

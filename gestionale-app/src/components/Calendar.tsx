@@ -27,8 +27,18 @@ interface CalendarProps {
     currentUser: any;
 }
 
+interface Project {
+    id: string;
+    name: string;
+    area?: string;
+    status: string;
+    clientName?: string;
+    assignedAt?: string;
+}
+
 export default function Calendar({ currentUser }: CalendarProps) {
     const [events, setEvents] = useState<Event[]>([]);
+    const [assignedProjects, setAssignedProjects] = useState<Project[]>([]);
     const [allUsers, setAllUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedDate, setSelectedDate] = useState(new Date());
@@ -44,7 +54,7 @@ export default function Calendar({ currentUser }: CalendarProps) {
     const loadData = async () => {
         try {
             setLoading(true);
-            const [eventsData, usersData] = await Promise.all([
+            const [eventsData, usersData, projectsData] = await Promise.all([
                 eventsAPI.getAll({}).catch((err: any) => {
                     console.error('Errore caricamento eventi:', err);
                     return [];
@@ -53,14 +63,20 @@ export default function Calendar({ currentUser }: CalendarProps) {
                     console.error('Errore caricamento utenti:', err);
                     return [];
                 }),
+                projectsAPI.getMyProjects().catch((err: any) => {
+                    console.error('Errore caricamento progetti assegnati:', err);
+                    return [];
+                }),
             ]);
             // Assicurati che siano sempre array
             setEvents(Array.isArray(eventsData) ? eventsData : []);
             setAllUsers(Array.isArray(usersData) ? usersData : []);
+            setAssignedProjects(Array.isArray(projectsData) ? projectsData : []);
         } catch (error) {
             console.error('Errore generale nel caricamento:', error);
             setEvents([]);
             setAllUsers([]);
+            setAssignedProjects([]);
         } finally {
             setLoading(false);
         }
@@ -108,6 +124,14 @@ export default function Calendar({ currentUser }: CalendarProps) {
             const eventDate = new Date(event.startTime);
             return eventDate.toDateString() === date.toDateString();
         });
+    };
+
+    // Ottieni progetti assegnati per un giorno specifico (mostra progetti come eventi nel calendario)
+    const getProjectsForDay = (day: number | null) => {
+        if (day === null) return [];
+        // I progetti assegnati vengono mostrati ogni giorno (non hanno una data specifica)
+        // Potresti anche filtrare per data se aggiungi un campo deadline al progetto
+        return assignedProjects;
     };
 
     // Naviga mese
@@ -230,7 +254,8 @@ export default function Calendar({ currentUser }: CalendarProps) {
                                             {day}
                                         </div>
                                         <div className="space-y-1">
-                                            {dayEvents.slice(0, 3).map(event => (
+                                            {/* Eventi */}
+                                            {dayEvents.slice(0, 2).map(event => (
                                                 <div
                                                     key={event.id}
                                                     onClick={() => {
@@ -248,9 +273,22 @@ export default function Calendar({ currentUser }: CalendarProps) {
                                                     {formatTime(event.startTime)} {event.title}
                                                 </div>
                                             ))}
-                                            {dayEvents.length > 3 && (
+                                            {/* Progetti Assegnati (mostra solo se ci sono progetti e non ci sono troppi eventi) */}
+                                            {dayEvents.length <= 2 && assignedProjects.length > 0 && (
+                                                assignedProjects.slice(0, 2 - dayEvents.length).map(project => (
+                                                    <div
+                                                        key={project.id}
+                                                        className="text-xs p-1 rounded bg-purple-100 text-purple-800 truncate"
+                                                        title={`Progetto: ${project.name} - ${project.status}`}
+                                                    >
+                                                        <Briefcase className="w-3 h-3 inline mr-1" />
+                                                        {project.name}
+                                                    </div>
+                                                ))
+                                            )}
+                                            {(dayEvents.length + Math.min(assignedProjects.length, 2 - dayEvents.length)) > 3 && (
                                                 <div className="text-xs text-gray-500">
-                                                    +{dayEvents.length - 3} altri
+                                                    +{(dayEvents.length + assignedProjects.length) - 3} altri
                                                 </div>
                                             )}
                                         </div>
@@ -324,6 +362,36 @@ export default function Calendar({ currentUser }: CalendarProps) {
                     </div>
                 )}
             </div>
+
+            {/* Lista Progetti Assegnati */}
+            {assignedProjects.length > 0 && (
+                <div className="bg-white rounded-lg shadow-md p-6 mt-6">
+                    <h3 className="text-lg font-semibold mb-4 flex items-center">
+                        <Briefcase className="w-5 h-5 mr-2 text-purple-600" />
+                        Progetti Assegnati
+                    </h3>
+                    <div className="space-y-3">
+                        {assignedProjects.map(project => (
+                            <div
+                                key={project.id}
+                                className="flex items-center justify-between p-3 bg-purple-50 rounded-lg border border-purple-200 hover:bg-purple-100 transition-colors"
+                            >
+                                <div className="flex-1">
+                                    <div className="font-medium text-purple-900">{project.name}</div>
+                                    <div className="text-sm text-purple-700">
+                                        {project.clientName && <span>Cliente: {project.clientName}</span>}
+                                        {project.area && <span className="ml-2">• Area: {project.area}</span>}
+                                        <span className="ml-2">• Status: {project.status}</span>
+                                    </div>
+                                </div>
+                                <div className="px-2 py-1 text-xs font-semibold rounded-full bg-purple-200 text-purple-800">
+                                    Progetto
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* Modale Dettaglio Evento */}
             {isModalOpen && selectedEvent && (
