@@ -290,20 +290,7 @@ export default function App() {
         }
     };
 
-    // toggleTodo rimosso - non più utilizzato
-    // const toggleTodo = async (projectId: string, todoId: string) => {
-        try {
-            const updated = await projectsAPI.toggleTodo(projectId, todoId);
-            setProjects(projects.map(p =>
-                p.id === projectId ? {
-                    ...p,
-                    todos: p.todos.map((t: any) => t.id === todoId ? updated : t)
-                } : p
-            ));
-        } catch (error: any) {
-            alert(error.message || 'Errore nell\'aggiornamento del todo');
-        }
-    };
+    // toggleTodo rimosso - non più utilizzato (sostituito da updateTodoStatus)
 
     const updateTodoStatus = async (projectId: string, todoId: string, status: string) => {
         try {
