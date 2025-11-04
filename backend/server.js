@@ -99,14 +99,17 @@ app.get('/health', async (req, res) => {
     res.json(response);
 });
 
-// API Routes
+// API Routes - con logging per debug
+console.log('🔧 Registrazione route...');
 app.use('/api/auth', authRoutes);
+console.log('   ✅ /api/auth registrato');
 app.use('/api/clients', clientsRoutes);
 app.use('/api/projects', projectsRoutes);
 app.use('/api/contracts', contractsRoutes);
 app.use('/api/events', eventsRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/tasks', tasksRoutes);
+console.log('   ✅ Tutte le route registrate');
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -119,7 +122,9 @@ app.use((err, req, res, next) => {
 
 // 404 handler
 app.use((req, res) => {
-    res.status(404).json({ error: 'Route non trovata' });
+    console.log(`❌ 404 - Route non trovata: ${req.method} ${req.path}`);
+    console.log('   Route disponibili: /health, /api/auth/*, /api/clients/*, /api/projects/*, ecc.');
+    res.status(404).json({ error: 'Route non trovata', path: req.path, method: req.method });
 });
 
 // Test connessione database all'avvio

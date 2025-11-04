@@ -5,6 +5,9 @@ import pool from '../database/connection.js';
 
 const router = express.Router();
 
+// Log per debug
+console.log('🔧 Auth router inizializzato');
+
 // Registrazione nuovo utente
 router.post('/register', async (req, res) => {
     try {
@@ -75,6 +78,7 @@ router.post('/register', async (req, res) => {
 
 // Login
 router.post('/login', async (req, res) => {
+    console.log('🔐 Route /login chiamata');
     const startTime = Date.now();
     const timestamp = new Date().toISOString();
     
