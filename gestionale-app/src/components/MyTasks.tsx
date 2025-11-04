@@ -9,19 +9,28 @@ interface MyTasksProps {
 export default function MyTasks({ user }: MyTasksProps) {
     const [tasks, setTasks] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        loadTasks();
+        if (user && user.id) {
+            loadTasks();
+        } else {
+            setLoading(false);
+            setError('Utente non autenticato');
+        }
     }, [user]);
 
     const loadTasks = async () => {
         setLoading(true);
+        setError(null);
         try {
             const myTasks = await tasksAPI.getMyTasks();
-            setTasks(myTasks || []);
+            // Assicurati che sia sempre un array
+            setTasks(Array.isArray(myTasks) ? myTasks : []);
         } catch (error: any) {
             console.error('Errore caricamento tasks:', error);
-            alert(error.message || 'Errore nel caricamento dei tuoi task');
+            setError(error.message || 'Errore nel caricamento dei tuoi task');
+            setTasks([]);
         } finally {
             setLoading(false);
         }
@@ -73,10 +82,34 @@ export default function MyTasks({ user }: MyTasksProps) {
         }
     };
 
+    if (!user || !user.id) {
+        return (
+            <div className="bg-white rounded-lg shadow-md p-8 text-center">
+                <p className="text-red-500 text-lg">Errore: Utente non autenticato</p>
+                <p className="text-gray-400 text-sm mt-2">Effettua il login per visualizzare i tuoi task</p>
+            </div>
+        );
+    }
+
     if (loading) {
         return (
             <div className="bg-white rounded-lg shadow-md p-8 text-center">
                 <p className="text-gray-500">Caricamento dei tuoi task...</p>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="bg-white rounded-lg shadow-md p-8 text-center">
+                <p className="text-red-500 text-lg">Errore</p>
+                <p className="text-gray-600 text-sm mt-2">{error}</p>
+                <button
+                    onClick={loadTasks}
+                    className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+                >
+                    Riprova
+                </button>
             </div>
         );
     }

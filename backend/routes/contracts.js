@@ -12,7 +12,7 @@ router.get('/', async (req, res) => {
             `SELECT c.contract_id as id, c.type, c.amount, c.status, c.date,
                     c.client_id as "clientId", c.project_id as "projectId",
                     cl.name as "clientName", p.name as "projectName",
-                    c.created_at as "createdAt"
+                    c.created_at as "createdAt", c.version
              FROM contracts c
              LEFT JOIN clients cl ON c.client_id = cl.client_id
              LEFT JOIN projects p ON c.project_id = p.project_id
@@ -33,7 +33,7 @@ router.get('/:id', async (req, res) => {
             `SELECT c.contract_id as id, c.type, c.amount, c.status, c.date,
                     c.client_id as "clientId", c.project_id as "projectId",
                     cl.name as "clientName", p.name as "projectName",
-                    c.created_at as "createdAt"
+                    c.created_at as "createdAt", c.version
              FROM contracts c
              LEFT JOIN clients cl ON c.client_id = cl.client_id
              LEFT JOIN projects p ON c.project_id = p.project_id
@@ -76,11 +76,41 @@ router.post('/', async (req, res) => {
     }
 });
 
-// PUT /api/contracts/:id - Aggiorna contratto
+// PUT /api/contracts/:id - Aggiorna contratto con optimistic locking
 router.put('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { type, clientId, projectId, amount, status, date } = req.body;
+        const { type, clientId, projectId, amount, status, date, expectedVersion } = req.body;
+
+        // Se expectedVersion è fornito, verifica che corrisponda
+        if (expectedVersion !== undefined) {
+            const currentCheck = await pool.query(
+                'SELECT version FROM contracts WHERE contract_id = $1',
+                [id]
+            );
+
+            if (currentCheck.rows.length === 0) {
+                return res.status(404).json({ error: 'Contratto non trovato' });
+            }
+
+            const currentVersion = currentCheck.rows[0].version;
+            if (currentVersion !== expectedVersion) {
+                const serverData = await pool.query(
+                    `SELECT contract_id as id, type, client_id as "clientId", 
+                            project_id as "projectId", amount, status, date, version, created_at as "createdAt"
+                     FROM contracts WHERE contract_id = $1`,
+                    [id]
+                );
+
+                return res.status(409).json({
+                    error: 'CONCURRENT_MODIFICATION',
+                    message: 'Il contratto è stato modificato da un altro utente. Ricarica i dati per vedere le modifiche.',
+                    currentVersion: currentVersion,
+                    expectedVersion: expectedVersion,
+                    serverData: serverData.rows[0]
+                });
+            }
+        }
 
         const result = await pool.query(
             `UPDATE contracts
@@ -93,7 +123,7 @@ router.put('/:id', async (req, res) => {
                  updated_at = CURRENT_TIMESTAMP
              WHERE contract_id = $7
              RETURNING contract_id as id, type, client_id as "clientId", 
-                       project_id as "projectId", amount, status, date, created_at as "createdAt"`,
+                       project_id as "projectId", amount, status, date, version, created_at as "createdAt"`,
             [type, clientId, projectId, amount, status, date, id]
         );
 

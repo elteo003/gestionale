@@ -10,7 +10,7 @@ router.get('/', async (req, res) => {
     try {
         const result = await pool.query(
             `SELECT p.project_id as id, p.name, p.client_id as "clientId", 
-                    p.area, p.status, p.created_at as "createdAt",
+                    p.area, p.status, p.created_at as "createdAt", p.version,
                     c.name as "clientName"
              FROM projects p
              LEFT JOIN clients c ON p.client_id = c.client_id
@@ -44,7 +44,7 @@ router.get('/:id', async (req, res) => {
         const { id } = req.params;
         const projectResult = await pool.query(
             `SELECT p.project_id as id, p.name, p.client_id as "clientId", 
-                    p.area, p.status, p.created_at as "createdAt",
+                    p.area, p.status, p.created_at as "createdAt", p.version,
                     c.name as "clientName"
              FROM projects p
              LEFT JOIN clients c ON p.client_id = c.client_id
@@ -95,11 +95,44 @@ router.post('/', async (req, res) => {
     }
 });
 
-// PUT /api/projects/:id - Aggiorna progetto
+// PUT /api/projects/:id - Aggiorna progetto con optimistic locking
 router.put('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, clientId, area, status } = req.body;
+        const { name, clientId, area, status, expectedVersion } = req.body;
+
+        // Se expectedVersion è fornito, verifica che corrisponda
+        if (expectedVersion !== undefined) {
+            // Prima verifica la versione corrente
+            const currentCheck = await pool.query(
+                'SELECT version FROM projects WHERE project_id = $1',
+                [id]
+            );
+
+            if (currentCheck.rows.length === 0) {
+                return res.status(404).json({ error: 'Progetto non trovato' });
+            }
+
+            const currentVersion = currentCheck.rows[0].version;
+            if (currentVersion !== expectedVersion) {
+                // Versione non corrisponde - conflitto di modifica
+                // Recupera i dati attuali del server per il merge
+                const serverData = await pool.query(
+                    `SELECT project_id as id, name, client_id as "clientId", 
+                            area, status, version, created_at as "createdAt"
+                     FROM projects WHERE project_id = $1`,
+                    [id]
+                );
+
+                return res.status(409).json({
+                    error: 'CONCURRENT_MODIFICATION',
+                    message: 'Il progetto è stato modificato da un altro utente. Ricarica i dati per vedere le modifiche.',
+                    currentVersion: currentVersion,
+                    expectedVersion: expectedVersion,
+                    serverData: serverData.rows[0]
+                });
+            }
+        }
 
         const result = await pool.query(
             `UPDATE projects
@@ -110,7 +143,7 @@ router.put('/:id', async (req, res) => {
                  updated_at = CURRENT_TIMESTAMP
              WHERE project_id = $5
              RETURNING project_id as id, name, client_id as "clientId", 
-                       area, status, created_at as "createdAt"`,
+                       area, status, version, created_at as "createdAt"`,
             [name, clientId, area, status, id]
         );
 

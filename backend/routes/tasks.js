@@ -54,6 +54,21 @@ router.get('/mytasks', async (req, res) => {
     try {
         const userId = req.user.userId;
         
+        // Verifica se la tabella tasks esiste
+        const tableCheck = await pool.query(
+            `SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_schema = 'public' 
+                AND table_name = 'tasks'
+            )`
+        );
+        
+        if (!tableCheck.rows[0].exists) {
+            // La tabella tasks non esiste ancora, probabilmente la migration non è stata eseguita
+            console.warn('Tabella tasks non trovata. Esegui la migration: backend/database/migration_tasks_and_assignments.sql');
+            return res.json([]); // Restituisci array vuoto invece di errore
+        }
+        
         const result = await pool.query(
             `SELECT t.task_id as id, t.description, t.status, t.priority, 
                     t.assigned_to_user_id as "assignedTo", t.created_at as "createdAt", t.updated_at as "updatedAt",
@@ -70,7 +85,12 @@ router.get('/mytasks', async (req, res) => {
         res.json(result.rows);
     } catch (error) {
         console.error('Errore recupero my tasks:', error);
-        res.status(500).json({ error: 'Errore interno del server' });
+        // Se è un errore di tabella non esistente, restituisci array vuoto
+        if (error.code === '42P01') { // PostgreSQL error code for "relation does not exist"
+            console.warn('Tabella tasks non trovata. Esegui la migration: backend/database/migration_tasks_and_assignments.sql');
+            return res.json([]);
+        }
+        res.status(500).json({ error: 'Errore interno del server', details: error.message });
     }
 });
 

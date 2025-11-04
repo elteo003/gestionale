@@ -117,6 +117,15 @@ async function apiCall(endpoint: string, options: RequestInit = {}): Promise<any
                 window.location.href = '/login';
             }
             
+            // Se è un conflitto di modifica simultanea (409), passa l'errore completo
+            if (response.status === 409 && error.error === 'CONCURRENT_MODIFICATION') {
+                const conflictError: any = new Error(error.message || 'Conflitto di modifica');
+                conflictError.name = 'ConcurrentModificationError';
+                conflictError.status = 409;
+                conflictError.conflictData = error;
+                throw conflictError;
+            }
+            
             throw new Error(error.error || `Errore ${response.status}`);
         }
         

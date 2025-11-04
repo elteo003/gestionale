@@ -12,7 +12,7 @@ router.get('/', async (req, res) => {
     try {
         const result = await pool.query(
             `SELECT client_id as id, name, contact_person as "contactPerson", 
-                    email, phone, status, area, created_at as "createdAt"
+                    email, phone, status, area, created_at as "createdAt", version
              FROM clients
              ORDER BY created_at DESC`
         );
@@ -29,7 +29,7 @@ router.get('/:id', async (req, res) => {
         const { id } = req.params;
         const result = await pool.query(
             `SELECT client_id as id, name, contact_person as "contactPerson", 
-                    email, phone, status, area, created_at as "createdAt"
+                    email, phone, status, area, created_at as "createdAt", version
              FROM clients
              WHERE client_id = $1`,
             [id]
@@ -70,11 +70,41 @@ router.post('/', async (req, res) => {
     }
 });
 
-// PUT /api/clients/:id - Aggiorna cliente
+// PUT /api/clients/:id - Aggiorna cliente con optimistic locking
 router.put('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, contactPerson, email, phone, status, area } = req.body;
+        const { name, contactPerson, email, phone, status, area, expectedVersion } = req.body;
+
+        // Se expectedVersion è fornito, verifica che corrisponda
+        if (expectedVersion !== undefined) {
+            const currentCheck = await pool.query(
+                'SELECT version FROM clients WHERE client_id = $1',
+                [id]
+            );
+
+            if (currentCheck.rows.length === 0) {
+                return res.status(404).json({ error: 'Cliente non trovato' });
+            }
+
+            const currentVersion = currentCheck.rows[0].version;
+            if (currentVersion !== expectedVersion) {
+                const serverData = await pool.query(
+                    `SELECT client_id as id, name, contact_person as "contactPerson", 
+                            email, phone, status, area, version, created_at as "createdAt"
+                     FROM clients WHERE client_id = $1`,
+                    [id]
+                );
+
+                return res.status(409).json({
+                    error: 'CONCURRENT_MODIFICATION',
+                    message: 'Il cliente è stato modificato da un altro utente. Ricarica i dati per vedere le modifiche.',
+                    currentVersion: currentVersion,
+                    expectedVersion: expectedVersion,
+                    serverData: serverData.rows[0]
+                });
+            }
+        }
 
         const result = await pool.query(
             `UPDATE clients
@@ -87,7 +117,7 @@ router.put('/:id', async (req, res) => {
                  updated_at = CURRENT_TIMESTAMP
              WHERE client_id = $7
              RETURNING client_id as id, name, contact_person as "contactPerson", 
-                       email, phone, status, area, created_at as "createdAt"`,
+                       email, phone, status, area, version, created_at as "createdAt"`,
             [name, contactPerson, email, phone, status, area, id]
         );
 

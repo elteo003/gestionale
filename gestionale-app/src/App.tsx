@@ -49,6 +49,16 @@ export default function App() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalContent, setModalContent] = useState<any>(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    
+    // Stati per gestione conflitti
+    const [conflictDialog, setConflictDialog] = useState<{
+        isOpen: boolean;
+        conflictData: ConflictData | null;
+        entityType: 'progetto' | 'cliente' | 'contratto' | 'task';
+        entityId: string;
+        originalData: any;
+        updateFunction: (data: any, version?: number) => Promise<void>;
+    } | null>(null);
 
     // Verifica autenticazione all'avvio
     useEffect(() => {
@@ -174,10 +184,31 @@ export default function App() {
 
     const updateClientStatus = async (clientId: string, status: string) => {
         try {
+            const client = clients.find(c => c.id === clientId);
             const updated = await clientsAPI.updateStatus(clientId, status);
-            setClients(clients.map(c => c.id === clientId ? updated : c));
+            setClients(clients.map(c => c.id === clientId ? { ...c, ...updated, version: updated.version || c.version } : c));
         } catch (error: any) {
-            alert(error.message || 'Errore nell\'aggiornamento dello stato');
+            if (error.name === 'ConcurrentModificationError' && error.conflictData) {
+                // Gestisci conflitto
+                const client = clients.find(c => c.id === clientId);
+                setConflictDialog({
+                    isOpen: true,
+                    conflictData: {
+                        yourChanges: { status },
+                        serverData: error.conflictData.serverData,
+                        originalData: client
+                    },
+                    entityType: 'cliente',
+                    entityId: clientId,
+                    originalData: client,
+                    updateFunction: async (data: any, version?: number) => {
+                        const updated = await clientsAPI.update({ ...data, expectedVersion: version });
+                        setClients(clients.map(c => c.id === clientId ? { ...c, ...updated } : c));
+                    }
+                });
+            } else {
+                alert(error.message || 'Errore nell\'aggiornamento dello stato');
+            }
         }
     };
 
@@ -208,10 +239,31 @@ export default function App() {
 
     const updateProjectStatus = async (projectId: string, status: string) => {
         try {
+            const project = projects.find(p => p.id === projectId);
             const updated = await projectsAPI.updateStatus(projectId, status);
-            setProjects(projects.map(p => p.id === projectId ? { ...p, status: updated.status } : p));
+            setProjects(projects.map(p => p.id === projectId ? { ...p, status: updated.status, version: updated.version || p.version } : p));
         } catch (error: any) {
-            alert(error.message || 'Errore nell\'aggiornamento dello stato');
+            if (error.name === 'ConcurrentModificationError' && error.conflictData) {
+                // Gestisci conflitto
+                const project = projects.find(p => p.id === projectId);
+                setConflictDialog({
+                    isOpen: true,
+                    conflictData: {
+                        yourChanges: { status },
+                        serverData: error.conflictData.serverData,
+                        originalData: project
+                    },
+                    entityType: 'progetto',
+                    entityId: projectId,
+                    originalData: project,
+                    updateFunction: async (data: any, version?: number) => {
+                        const updated = await projectsAPI.update(projectId, { ...data, expectedVersion: version });
+                        setProjects(projects.map(p => p.id === projectId ? { ...p, ...updated } : p));
+                    }
+                });
+            } else {
+                alert(error.message || 'Errore nell\'aggiornamento dello stato');
+            }
         }
     };
 
@@ -303,10 +355,31 @@ export default function App() {
 
     const updateContractStatus = async (contractId: string, status: string) => {
         try {
+            const contract = contracts.find(c => c.id === contractId);
             const updated = await contractsAPI.updateStatus(contractId, status);
-            setContracts(contracts.map(c => c.id === contractId ? updated : c));
+            setContracts(contracts.map(c => c.id === contractId ? { ...c, ...updated, version: updated.version || c.version } : c));
         } catch (error: any) {
-            alert(error.message || 'Errore nell\'aggiornamento dello stato');
+            if (error.name === 'ConcurrentModificationError' && error.conflictData) {
+                // Gestisci conflitto
+                const contract = contracts.find(c => c.id === contractId);
+                setConflictDialog({
+                    isOpen: true,
+                    conflictData: {
+                        yourChanges: { status },
+                        serverData: error.conflictData.serverData,
+                        originalData: contract
+                    },
+                    entityType: 'contratto',
+                    entityId: contractId,
+                    originalData: contract,
+                    updateFunction: async (data: any, version?: number) => {
+                        const updated = await contractsAPI.update(contractId, { ...data, expectedVersion: version });
+                        setContracts(contracts.map(c => c.id === contractId ? { ...c, ...updated } : c));
+                    }
+                });
+            } else {
+                alert(error.message || 'Errore nell\'aggiornamento dello stato');
+            }
         }
     };
 
@@ -436,6 +509,41 @@ export default function App() {
             <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
                 {modalContent || <div className="p-4 text-gray-600">Caricamento form...</div>}
             </Modal>
+
+            {/* Dialog Conflitti */}
+            {conflictDialog && conflictDialog.isOpen && conflictDialog.conflictData && (
+                <ConflictDialog
+                    isOpen={conflictDialog.isOpen}
+                    onClose={() => setConflictDialog(null)}
+                    conflictData={conflictDialog.conflictData}
+                    entityType={conflictDialog.entityType}
+                    onResolve={async (resolution, mergedData) => {
+                        if (!conflictDialog) return;
+                        
+                        try {
+                            let dataToSave = mergedData || conflictDialog.conflictData.yourChanges;
+                            const serverVersion = conflictDialog.conflictData.serverData.version;
+                            
+                            if (resolution === 'server') {
+                                // Ricarica i dati dal server
+                                await loadData();
+                            } else {
+                                // Applica la risoluzione (yours o merged)
+                                await conflictDialog.updateFunction(dataToSave, serverVersion);
+                            }
+                            
+                            setConflictDialog(null);
+                        } catch (error: any) {
+                            console.error('Errore risoluzione conflitto:', error);
+                            alert(error.message || 'Errore nell\'applicazione della risoluzione');
+                        }
+                    }}
+                    onReload={async () => {
+                        await loadData();
+                        setConflictDialog(null);
+                    }}
+                />
+            )}
         </div>
     );
 }
