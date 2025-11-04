@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Users, Activity, Database, Settings, Edit2, Key, Power, PowerOff, Plus, X, AlertCircle, CheckCircle, RefreshCw, Server } from 'lucide-react';
 import DiagnosticsModal from './DiagnosticsModal';
+import { usersAPI } from '../services/api';
 
 // Mock data per testing
 const MOCK_USERS = [
@@ -86,25 +87,26 @@ export default function AdminPanel({}: AdminPanelProps) {
     const loadUsers = async () => {
         if (useMockData) {
             setUsers(MOCK_USERS);
+            setError('');
             return;
         }
 
         try {
             setLoading(true);
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/users`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-            if (response.ok) {
-                const data = await response.json();
-                setUsers(data);
+            setError('');
+            const data = await usersAPI.getAll();
+            setUsers(Array.isArray(data) ? data : []);
+        } catch (error: any) {
+            console.error('Errore caricamento utenti:', error);
+            if (error.message && error.message.includes('401')) {
+                setError('Token non valido. Effettua nuovamente il login.');
+            } else if (error.message && error.message.includes('403')) {
+                setError('Accesso negato. Solo Admin/IT Manager possono vedere gli utenti.');
+            } else if (error.message && error.message.includes('Failed to fetch')) {
+                setError('Impossibile raggiungere il backend. Verifica la connessione.');
             } else {
-                setError('Errore nel caricamento degli utenti');
+                setError(error.message || 'Errore nel caricamento degli utenti');
             }
-        } catch (error) {
-            setError('Errore di connessione');
         } finally {
             setLoading(false);
         }
