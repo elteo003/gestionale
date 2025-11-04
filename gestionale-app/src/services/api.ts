@@ -88,7 +88,10 @@ async function apiCall(endpoint: string, options: RequestInit = {}): Promise<any
         }
     }
     const token = localStorage.getItem('token');
-    const fullUrl = `${getApiUrl()}${endpoint}`;
+    const baseUrl = getApiUrl();
+    // Assicurati che l'endpoint inizi con / e che baseUrl non finisca con /
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    const fullUrl = `${baseUrl}${cleanEndpoint}`;
     
     const config: RequestInit = {
         ...options,
