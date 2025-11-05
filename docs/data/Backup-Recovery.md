@@ -13,6 +13,42 @@ Questa guida descrive le procedure di backup e recovery per il database PostgreS
 
 ## Strategia di Backup
 
+### Backup Flow
+
+```mermaid
+graph TD
+    A[Backup Trigger] --> B{Backup Type?}
+    B -->|Manual| C[User Initiated]
+    B -->|Scheduled| D[Cron Job]
+    B -->|Pre-Migration| E[Before Migration]
+    
+    C --> F[pg_dump]
+    D --> F
+    E --> F
+    
+    F --> G[Create SQL Dump]
+    G --> H[Compress]
+    H --> I[Store Backup]
+    I --> J{Storage Location?}
+    J -->|Local| K[Local Filesystem]
+    J -->|Cloud| L[S3/GCS]
+    J -->|Render| M[Render Backups]
+    
+    I --> N[Verify Backup]
+    N --> O{Valid?}
+    O -->|No| P[Retry Backup]
+    O -->|Yes| Q[Backup Complete]
+    
+    style A fill:#e1f5ff
+    style F fill:#c8e6c9
+    style G fill:#fff9c4
+    style H fill:#fff9c4
+    style I fill:#ccccff
+    style N fill:#ffcc99
+    style O fill:#ffcc99
+    style Q fill:#ccffcc
+```
+
 ### Tipi di Backup
 
 1. **Full Backup** - Backup completo del database
@@ -152,6 +188,52 @@ node backend/scripts/backup.js
 ```
 
 ## Recovery da Backup
+
+### Recovery Flow
+
+```mermaid
+graph TD
+    A[Disaster Occurs] --> B{Data Loss?}
+    B -->|Yes| C[Identify Issue]
+    B -->|No| D[Service Issue]
+    
+    C --> E[Select Backup]
+    E --> F{Backup Type?}
+    F -->|Full| G[Full Restore]
+    F -->|Partial| H[Partial Restore]
+    F -->|Point-in-Time| I[PITR Restore]
+    
+    G --> J[Stop Application]
+    H --> J
+    I --> J
+    
+    J --> K[Create Backup of Current State]
+    K --> L[Restore from Backup]
+    L --> M{Restore Success?}
+    M -->|No| N[Troubleshoot]
+    N --> L
+    M -->|Yes| O[Verify Data]
+    O --> P{Data Valid?}
+    P -->|No| Q[Restore Different Backup]
+    Q --> L
+    P -->|Yes| R[Restart Application]
+    R --> S[Monitor]
+    
+    style A fill:#ffcccc
+    style C fill:#ffcccc
+    style E fill:#ffffcc
+    style G fill:#fff9c4
+    style H fill:#fff9c4
+    style I fill:#fff9c4
+    style J fill:#ffcc99
+    style K fill:#ccccff
+    style L fill:#c8e6c9
+    style M fill:#ffcc99
+    style O fill:#ccccff
+    style P fill:#ffcc99
+    style R fill:#c8e6c9
+    style S fill:#ccffcc
+```
 
 ### Metodo 1: pg_restore (da SQL)
 

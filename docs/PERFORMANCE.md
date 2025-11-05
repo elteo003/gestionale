@@ -13,6 +13,33 @@ Questa guida descrive le ottimizzazioni di performance per il gestionale, dai pr
 
 ## Problemi di Performance Identificati
 
+### Performance Bottleneck Analysis
+
+```mermaid
+graph TD
+    A[Client Request] --> B[Frontend]
+    B -->|API Call| C[Backend API]
+    C -->|Query| D{Query Type}
+    D -->|Single Query| E[✅ Fast]
+    D -->|N+1 Queries| F[❌ Slow]
+    F --> G[Multiple Round Trips]
+    G --> H[High Latency]
+    
+    C -->|No Cache| I[❌ Slow]
+    C -->|With Cache| J[✅ Fast]
+    
+    B -->|Large Bundle| K[❌ Slow Load]
+    B -->|Code Splitting| L[✅ Fast Load]
+    
+    style E fill:#ccffcc
+    style F fill:#ffcccc
+    style H fill:#ffcccc
+    style I fill:#ffcccc
+    style J fill:#ccffcc
+    style K fill:#ffcccc
+    style L fill:#ccffcc
+```
+
 ### 1. N+1 Queries
 
 **Problema**: Query multiple invece di una singola query con JOIN.
@@ -81,6 +108,30 @@ router.get('/api/clients', async (req, res) => {
 ### 3. Query Non Ottimizzate
 
 **Problema**: Query senza indici o con JOIN non ottimizzati.
+
+```mermaid
+graph LR
+    subgraph "Query Ottimizzazione"
+        A[Query Execution] --> B{Has Index?}
+        B -->|No| C[Full Table Scan<br/>❌ Slow]
+        B -->|Yes| D[Index Scan<br/>✅ Fast]
+        
+        A --> E{SELECT *?}
+        E -->|Yes| F[Load All Columns<br/>❌ Unnecessary]
+        E -->|No| G[Load Required Columns<br/>✅ Efficient]
+        
+        A --> H{Has LIMIT?}
+        H -->|No| I[Load All Rows<br/>❌ Slow]
+        H -->|Yes| J[Load Limited Rows<br/>✅ Fast]
+    end
+    
+    style C fill:#ffcccc
+    style D fill:#ccffcc
+    style F fill:#ffcccc
+    style G fill:#ccffcc
+    style I fill:#ffcccc
+    style J fill:#ccffcc
+```
 
 **Soluzione**: Aggiungi indici e ottimizza query:
 

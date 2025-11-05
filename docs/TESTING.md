@@ -13,16 +13,55 @@ Questa documentazione è destinata a:
 
 ## Strategia di Testing
 
+### Test Strategy Flow
+
+```mermaid
+graph TD
+    A[Code Change] --> B{Test Type?}
+    B -->|Unit| C[Test Function/Component]
+    B -->|Integration| D[Test API Endpoint]
+    B -->|E2E| E[Test User Journey]
+    
+    C --> F{Jest + RTL}
+    D --> G{Supertest}
+    E --> H{Playwright}
+    
+    F --> I[Assert Results]
+    G --> I
+    H --> I
+    
+    I --> J{Pass?}
+    J -->|No| K[Fix Code]
+    K --> B
+    J -->|Yes| L[Continue Development]
+    
+    style A fill:#e1f5ff
+    style C fill:#ccffcc
+    style D fill:#ffffcc
+    style E fill:#ffcccc
+    style I fill:#ccccff
+    style J fill:#ffcc99
+    style L fill:#ccffcc
+```
+
 ### Piramide di Testing
 
-```
-        /\
-       /  \      E2E Tests (Pochi, costosi)
-      /----\
-     /      \    Integration Tests (Alcuni)
-    /--------\
-   /          \  Unit Tests (Molti, veloci)
-  /------------\
+```mermaid
+graph TD
+    A[E2E Tests<br/>10%<br/>Pochi, costosi] 
+    B[Integration Tests<br/>20%<br/>Alcuni]
+    C[Unit Tests<br/>70%<br/>Molti, veloci]
+    
+    A --> D[Test Flussi Completi<br/>User Journeys]
+    B --> E[Test Interazioni<br/>Componenti/API]
+    C --> F[Test Funzioni<br/>Isolate]
+    
+    style A fill:#ffcccc
+    style B fill:#ffffcc
+    style C fill:#ccffcc
+    style D fill:#ffcccc
+    style E fill:#ffffcc
+    style F fill:#ccffcc
 ```
 
 ### Livelli di Testing

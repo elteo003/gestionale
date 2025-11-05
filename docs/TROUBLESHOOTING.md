@@ -9,6 +9,43 @@ Questa documentazione è destinata a:
 
 ## Problemi Comuni
 
+### Troubleshooting Decision Tree
+
+```mermaid
+graph TD
+    A[Problem Occurs] --> B{What Type?}
+    B -->|Backend| C[Backend Issues]
+    B -->|Frontend| D[Frontend Issues]
+    B -->|Database| E[Database Issues]
+    B -->|Deployment| F[Deployment Issues]
+    
+    C --> C1{Port in Use?}
+    C1 -->|Yes| C2[Kill Process]
+    C1 -->|No| C3{Env Vars OK?}
+    C3 -->|No| C4[Check .env]
+    C3 -->|Yes| C5{Database Connected?}
+    
+    D --> D1{API Reachable?}
+    D1 -->|No| D2[Check VITE_API_URL]
+    D1 -->|Yes| D3{CORS Error?}
+    D3 -->|Yes| D4[Check CORS Config]
+    
+    E --> E1{Connection Failed?}
+    E1 -->|Yes| E2[Check DATABASE_URL]
+    E1 -->|No| E3{Migration Error?}
+    E3 -->|Yes| E4[Check Migration Order]
+    
+    F --> F1{Build Failed?}
+    F1 -->|Yes| F2[Check Build Logs]
+    F1 -->|No| F3{Deploy Failed?}
+    
+    style A fill:#e1f5ff
+    style C fill:#ffcccc
+    style D fill:#ffffcc
+    style E fill:#ccccff
+    style F fill:#ffcc99
+```
+
 ### Backend Non Si Avvia
 
 #### Sintomi

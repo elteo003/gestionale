@@ -197,6 +197,30 @@ Questa documentazione è destinata a:
 
 ## Priorità di Implementazione
 
+### Roadmap Timeline
+
+```mermaid
+gantt
+    title Roadmap Implementazione
+    dateFormat YYYY-MM-DD
+    section Q1 2024
+    Rate Limiting           :a1, 2024-01-01, 3d
+    Test Suite Base         :a2, after a1, 10d
+    Bug Fixes Critici      :a3, 2024-01-01, 5d
+    section Q2 2024
+    Query Optimization     :b1, 2024-04-01, 7d
+    Caching Strategy        :b2, after b1, 7d
+    Refresh Token           :b3, 2024-04-15, 5d
+    section Q3 2024
+    Refactoring Componenti  :c1, 2024-07-01, 14d
+    TypeScript Improvements :c2, after c1, 7d
+    Migration Versioning    :c3, 2024-07-15, 5d
+    section Q4 2024
+    API Versioning          :d1, 2024-10-01, 7d
+    Advanced Monitoring      :d2, after d1, 14d
+    E2E Testing             :d3, 2024-10-15, 7d
+```
+
 ### Immediate (Q1 2024)
 
 1. ✅ **Rate Limiting** - Sicurezza critica

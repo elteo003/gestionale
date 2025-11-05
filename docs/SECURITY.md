@@ -11,6 +11,40 @@ Questa documentazione è destinata a:
 
 Questa guida descrive le best practices di sicurezza per il gestionale, dalle configurazioni di base alle considerazioni avanzate.
 
+## Security Layers Architecture
+
+```mermaid
+graph TD
+    A[Client Request] -->|HTTPS| B[Frontend<br/>React]
+    B -->|JWT Token| C[Backend API<br/>Express]
+    C -->|CORS Check| D{Origin Allowed?}
+    D -->|No| E[403 Forbidden]
+    D -->|Yes| F[Auth Middleware]
+    F -->|Verify JWT| G{Token Valid?}
+    G -->|No| H[401 Unauthorized]
+    G -->|Yes| I[Rate Limiting<br/>Future]
+    I -->|Check Limits| J{Within Limits?}
+    J -->|No| K[429 Too Many Requests]
+    J -->|Yes| L[Input Validation]
+    L -->|Sanitize| M[Business Logic]
+    M -->|SQL Injection Prevention| N[Database<br/>PostgreSQL]
+    
+    style A fill:#e1f5ff
+    style B fill:#c8e6c9
+    style C fill:#fff9c4
+    style D fill:#ffcccc
+    style E fill:#ffcccc
+    style F fill:#ffcc99
+    style G fill:#ffcc99
+    style H fill:#ffcccc
+    style I fill:#ffffcc
+    style J fill:#ffcc99
+    style K fill:#ffcccc
+    style L fill:#ccffcc
+    style M fill:#ccccff
+    style N fill:#f3e5f5
+```
+
 ## Autenticazione e Autorizzazione
 
 ### JWT Token
@@ -73,6 +107,31 @@ res.cookie('token', token, {
 ```
 
 **⚠️ TRADE-OFF**: Cookies richiedono configurazione CORS aggiuntiva.
+
+### Authentication Flow
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant F as Frontend
+    participant B as Backend
+    participant D as Database
+    
+    U->>F: Login (email, password)
+    F->>B: POST /api/auth/login
+    B->>D: Query user by email
+    D-->>B: User data
+    B->>B: Verify password (bcrypt)
+    alt Password Valid
+        B->>B: Generate JWT token
+        B-->>F: { token, user }
+        F->>F: Store token (localStorage)
+        F-->>U: Redirect to dashboard
+    else Password Invalid
+        B-->>F: 401 Unauthorized
+        F-->>U: Show error message
+    end
+```
 
 ### Rate Limiting
 

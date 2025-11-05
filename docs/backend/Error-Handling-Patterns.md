@@ -59,6 +59,35 @@ res.status(500).json({
 
 ## Codici di Stato HTTP
 
+### Decision Tree Error Handling
+
+```mermaid
+graph TD
+    A[Request Arrives] --> B{Valid Token?}
+    B -->|No| C[401 Unauthorized]
+    B -->|Yes| D{Valid Permissions?}
+    D -->|No| E[403 Forbidden]
+    D -->|Yes| F{Valid Input?}
+    F -->|No| G[400 Bad Request]
+    F -->|Yes| H{Resource Exists?}
+    H -->|No| I[404 Not Found]
+    H -->|Yes| J{Version Match?<br/>Optimistic Locking}
+    J -->|No| K[409 Conflict]
+    J -->|Yes| L{Business Logic OK?}
+    L -->|No| M[400 Bad Request]
+    L -->|Yes| N{Database OK?}
+    N -->|No| O[500 Internal Server Error]
+    N -->|Yes| P[200/201 Success]
+    
+    style C fill:#ffcccc
+    style E fill:#ffcccc
+    style G fill:#ffffcc
+    style I fill:#ffffcc
+    style K fill:#ffcc99
+    style O fill:#ffcccc
+    style P fill:#ccffcc
+```
+
 ### 200 OK
 **Uso**: Operazione completata con successo
 

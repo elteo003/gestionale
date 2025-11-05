@@ -180,6 +180,45 @@ refactor(calendar): estrai modali in componenti separati
 
 ## Sviluppare una Nuova Feature
 
+### Feature Development Workflow
+
+```mermaid
+graph TD
+    A[Feature Request] --> B[Planning]
+    B --> C[Database Changes?]
+    C -->|Yes| D[Create Migration]
+    C -->|No| E[Backend Changes]
+    D --> F[Test Migration]
+    F --> G[Backend Implementation]
+    E --> G
+    G --> H[Frontend Implementation]
+    H --> I[Integration Testing]
+    I --> J{All Tests Pass?}
+    J -->|No| K[Fix Issues]
+    K --> I
+    J -->|Yes| L[Code Review]
+    L --> M{Approved?}
+    M -->|No| K
+    M -->|Yes| N[Deploy to Staging]
+    N --> O[Staging Testing]
+    O --> P{Issues Found?}
+    P -->|Yes| K
+    P -->|No| Q[Deploy to Production]
+    Q --> R[Monitor]
+    
+    style A fill:#e1f5ff
+    style B fill:#c8e6c9
+    style D fill:#fff9c4
+    style G fill:#fff9c4
+    style H fill:#fff9c4
+    style I fill:#ffcc99
+    style J fill:#ffcc99
+    style L fill:#ccccff
+    style N fill:#ffffcc
+    style Q fill:#ccffcc
+    style R fill:#ccffcc
+```
+
 ### Checklist
 
 1. **Pianificazione**

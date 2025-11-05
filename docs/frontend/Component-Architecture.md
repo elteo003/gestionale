@@ -50,6 +50,38 @@ function ProjectCard({ project, onUpdate, onDelete, onAddTask, ... }) {
 
 ## Struttura Componenti Consigliata
 
+### Architettura Componenti
+
+```mermaid
+graph TD
+    A[App.tsx<br/>Router + Auth] --> B[DataContext<br/>Global State]
+    A --> C[Pages<br/>Orchestratori]
+    
+    C --> D[ProjectsPage]
+    C --> E[CalendarPage]
+    C --> F[DashboardPage]
+    
+    D --> G[ProjectsList]
+    D --> H[ProjectForm]
+    
+    G --> I[ProjectCard]
+    I --> J[ProjectTeam]
+    I --> K[TasksTab]
+    I --> L[TodoTab]
+    
+    E --> M[Calendar]
+    M --> N[EventCard]
+    M --> O[CreateEventModal]
+    M --> P[PollViewModal]
+    
+    style A fill:#ffcccc
+    style B fill:#ccffcc
+    style C fill:#ccccff
+    style D fill:#ffffcc
+    style E fill:#ffffcc
+    style F fill:#ffffcc
+```
+
 ### Struttura Directory
 
 ```
@@ -91,6 +123,39 @@ gestionale-app/src/
 ```
 
 ## Refactoring App.tsx
+
+### Architettura Prima e Dopo Refactoring
+
+```mermaid
+graph LR
+    subgraph "PRIMA: Monolitico"
+        A1[App.tsx<br/>~1900 righe<br/>Router + Auth + CRUD + Forms + Lists + UI]
+    end
+    
+    subgraph "DOPO: Modulare"
+        A2[App.tsx<br/>~20 righe<br/>Solo Router]
+        B[AuthProvider<br/>Context]
+        C[DataProvider<br/>Context]
+        D[Pages<br/>Orchestratori]
+        E[Components<br/>Feature-specific]
+        F[Hooks<br/>Custom logic]
+    end
+    
+    A1 -.Refactoring.-> A2
+    A2 --> B
+    A2 --> C
+    A2 --> D
+    D --> E
+    E --> F
+    
+    style A1 fill:#ffcccc
+    style A2 fill:#ccffcc
+    style B fill:#ccccff
+    style C fill:#ccccff
+    style D fill:#ffffcc
+    style E fill:#ffffcc
+    style F fill:#ffccff
+```
 
 ### Problema Attuale
 
@@ -301,6 +366,27 @@ export function Calendar({ currentUser }: Props) {
 
 **Container**: Gestisce stato e logica  
 **Presenter**: Gestisce solo rendering
+
+```mermaid
+graph TD
+    A[Container Component<br/>State + Logic] -->|Props| B[Presenter Component<br/>Rendering Only]
+    
+    A --> C[API Calls]
+    A --> D[State Management]
+    A --> E[Side Effects]
+    
+    B --> F[UI Rendering]
+    B --> G[User Events]
+    G -->|Callback| A
+    
+    style A fill:#ccffcc
+    style B fill:#ccccff
+    style C fill:#ffffcc
+    style D fill:#ffffcc
+    style E fill:#ffffcc
+    style F fill:#ffccff
+    style G fill:#ffccff
+```
 
 ```typescript
 // Container

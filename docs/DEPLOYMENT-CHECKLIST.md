@@ -73,6 +73,44 @@ Questa documentazione è destinata a:
 
 ## Deployment Steps
 
+### Deployment Flow
+
+```mermaid
+graph TD
+    A[Pre-Deployment<br/>Checklist] --> B[Backend Build]
+    B --> C{Build Success?}
+    C -->|No| D[Fix Build Errors]
+    D --> B
+    C -->|Yes| E[Database Backup]
+    E --> F[Database Migrations]
+    F --> G{Migrations OK?}
+    G -->|No| H[Rollback]
+    G -->|Yes| I[Backend Deploy]
+    I --> J[Frontend Build]
+    J --> K{Build Success?}
+    K -->|No| L[Fix Build Errors]
+    L --> J
+    K -->|Yes| M[Frontend Deploy]
+    M --> N[Post-Deployment<br/>Verification]
+    N --> O{All Tests Pass?}
+    O -->|No| P[Rollback]
+    O -->|Yes| Q[Monitor]
+    
+    style A fill:#e1f5ff
+    style B fill:#fff9c4
+    style C fill:#ffcc99
+    style E fill:#fff9c4
+    style F fill:#fff9c4
+    style G fill:#ffcc99
+    style I fill:#c8e6c9
+    style J fill:#fff9c4
+    style K fill:#ffcc99
+    style M fill:#c8e6c9
+    style N fill:#ccccff
+    style O fill:#ffcc99
+    style Q fill:#ccffcc
+```
+
 ### 1. Backend Deployment
 
 ```bash

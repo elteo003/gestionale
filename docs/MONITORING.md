@@ -11,6 +11,42 @@ Questa documentazione è destinata a:
 
 Questa guida descrive la strategia di monitoring e logging per il gestionale, dalle best practices di base alle soluzioni avanzate.
 
+## Monitoring Architecture
+
+```mermaid
+graph TD
+    A[Application] -->|Logs| B[Logger Service]
+    B --> C{Log Level}
+    C -->|ERROR| D[Error Aggregator<br/>Sentry/Rollbar]
+    C -->|WARN| E[Log Storage]
+    C -->|INFO| E
+    C -->|DEBUG| F[Development Only]
+    
+    A -->|Metrics| G[Metrics Collector]
+    G --> H[Performance Metrics]
+    G --> I[Business Metrics]
+    
+    H --> J[Dashboard<br/>Grafana]
+    I --> J
+    E --> K[Log Aggregation<br/>ELK Stack]
+    D --> L[Alert System]
+    
+    L --> M{Alert Conditions}
+    M -->|Critical| N[Immediate Alert]
+    M -->|Warning| O[Email Notification]
+    
+    style A fill:#e1f5ff
+    style B fill:#c8e6c9
+    style D fill:#ffcccc
+    style E fill:#ffffcc
+    style G fill:#ccccff
+    style J fill:#ffccff
+    style K fill:#ffffcc
+    style L fill:#ffcc99
+    style N fill:#ffcccc
+    style O fill:#ffffcc
+```
+
 ## Logging Strategy
 
 ### Log Levels

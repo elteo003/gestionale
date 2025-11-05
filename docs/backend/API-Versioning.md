@@ -15,6 +15,37 @@ Questo documento descrive la **strategia consigliata** per implementare versioni
 
 ## Strategia Consigliata: URL Versioning
 
+### API Versioning Architecture
+
+```mermaid
+graph TD
+    A[Client Request] --> B{Version?}
+    B -->|/api/v1/| C[v1 Routes]
+    B -->|/api/v2/| D[v2 Routes]
+    B -->|/api/| E[Backward Compat<br/>→ v1]
+    
+    C --> F[v1 Implementation]
+    D --> G[v2 Implementation]
+    E --> C
+    
+    F --> H{Deprecated?}
+    H -->|Yes| I[Deprecation Warning]
+    H -->|No| J[Standard Response]
+    
+    I --> K[Sunset Date]
+    K --> L[Remove After Grace Period]
+    
+    style A fill:#e1f5ff
+    style C fill:#c8e6c9
+    style D fill:#ccffcc
+    style E fill:#ffffcc
+    style F fill:#c8e6c9
+    style G fill:#ccffcc
+    style H fill:#ffcc99
+    style I fill:#ffffcc
+    style K fill:#ffcccc
+```
+
 ### Formato
 
 ```
@@ -87,6 +118,30 @@ router.get('/api/v2/projects', async (req, res) => {
 ```
 
 ## Deprecation Policy
+
+### Deprecation Lifecycle
+
+```mermaid
+graph LR
+    A[API v1 Active] --> B[Announce v2]
+    B --> C[Add Deprecation Header]
+    C --> D[Grace Period<br/>6-12 months]
+    D --> E[Sunset Date]
+    E --> F[Remove v1]
+    
+    G[Monitor v1 Usage] --> H{Usage < 5%?}
+    H -->|Yes| E
+    H -->|No| D
+    
+    style A fill:#ccffcc
+    style B fill:#ffffcc
+    style C fill:#ffcc99
+    style D fill:#ffffcc
+    style E fill:#ffcccc
+    style F fill:#ffcccc
+    style G fill:#ccccff
+    style H fill:#ffcc99
+```
 
 ### Processo di Deprecazione
 
