@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Clock, Users, CheckCircle, XCircle, Phone, AlertCircle, Briefcase } from 'lucide-react';
-import { eventsAPI, usersAPI, projectsAPI } from '../services/api.ts';
+import { Plus, Clock, Users, CheckCircle, XCircle, Phone, AlertCircle, Briefcase, GraduationCap, Network, Calendar as CalendarIcon, X } from 'lucide-react';
+import { eventsAPI, usersAPI, projectsAPI, clientsAPI } from '../services/api.ts';
 
 interface Event {
     id: string;
@@ -10,6 +10,14 @@ interface Event {
     endTime: string;
     isCall: boolean;
     callLink?: string;
+    eventType?: 'call' | 'networking' | 'formazione' | 'generic';
+    eventSubtype?: 'call_interna' | 'call_reparto' | 'call_clienti';
+    area?: string;
+    clientId?: string;
+    clientName?: string;
+    recurrenceType?: 'none' | 'weekly' | 'monthly';
+    recurrenceEndDate?: string;
+    version?: number;
     creatorId: string;
     creatorName?: string;
     participants?: Participant[];
@@ -40,6 +48,7 @@ export default function Calendar({ currentUser }: CalendarProps) {
     const [events, setEvents] = useState<Event[]>([]);
     const [assignedProjects, setAssignedProjects] = useState<Project[]>([]);
     const [allUsers, setAllUsers] = useState<any[]>([]);
+    const [allClients, setAllClients] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
@@ -54,7 +63,7 @@ export default function Calendar({ currentUser }: CalendarProps) {
     const loadData = async () => {
         try {
             setLoading(true);
-            const [eventsData, usersData, projectsData] = await Promise.all([
+            const [eventsData, usersData, projectsData, clientsData] = await Promise.all([
                 eventsAPI.getAll({}).catch((err: any) => {
                     console.error('Errore caricamento eventi:', err);
                     return [];
@@ -67,16 +76,22 @@ export default function Calendar({ currentUser }: CalendarProps) {
                     console.error('Errore caricamento progetti assegnati:', err);
                     return [];
                 }),
+                clientsAPI.getAll().catch((err: any) => {
+                    console.error('Errore caricamento clienti:', err);
+                    return [];
+                }),
             ]);
             // Assicurati che siano sempre array
             setEvents(Array.isArray(eventsData) ? eventsData : []);
             setAllUsers(Array.isArray(usersData) ? usersData : []);
             setAssignedProjects(Array.isArray(projectsData) ? projectsData : []);
+            setAllClients(Array.isArray(clientsData) ? clientsData : []);
         } catch (error) {
             console.error('Errore generale nel caricamento:', error);
             setEvents([]);
             setAllUsers([]);
             setAssignedProjects([]);
+            setAllClients([]);
         } finally {
             setLoading(false);
         }
@@ -261,13 +276,23 @@ export default function Calendar({ currentUser }: CalendarProps) {
                                                         setIsModalOpen(true);
                                                     }}
                                                     className={`text-xs p-1 rounded cursor-pointer truncate ${
-                                                        event.isCall
+                                                        event.eventType === 'call' || event.isCall
                                                             ? 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                                                            : event.eventType === 'formazione'
+                                                            ? 'bg-purple-100 text-purple-800 hover:bg-purple-200'
+                                                            : event.eventType === 'networking'
+                                                            ? 'bg-orange-100 text-orange-800 hover:bg-orange-200'
                                                             : 'bg-green-100 text-green-800 hover:bg-green-200'
                                                     }`}
                                                     title={event.title}
                                                 >
-                                                    {event.isCall && <Phone className="w-3 h-3 inline mr-1" />}
+                                                    {event.eventType === 'call' || event.isCall ? (
+                                                        <Phone className="w-3 h-3 inline mr-1" />
+                                                    ) : event.eventType === 'formazione' ? (
+                                                        <GraduationCap className="w-3 h-3 inline mr-1" />
+                                                    ) : event.eventType === 'networking' ? (
+                                                        <Network className="w-3 h-3 inline mr-1" />
+                                                    ) : null}
                                                     {formatTime(event.startTime)} {event.title}
                                                 </div>
                                             ))}
@@ -319,10 +344,22 @@ export default function Calendar({ currentUser }: CalendarProps) {
                                     <div className="flex items-start justify-between">
                                         <div className="flex-1">
                                             <div className="flex items-center gap-2 mb-2">
-                                                {event.isCall && (
+                                                {event.eventType === 'call' || event.isCall ? (
                                                     <Phone className="w-4 h-4 text-blue-600" />
-                                                )}
+                                                ) : event.eventType === 'formazione' ? (
+                                                    <GraduationCap className="w-4 h-4 text-purple-600" />
+                                                ) : event.eventType === 'networking' ? (
+                                                    <Network className="w-4 h-4 text-orange-600" />
+                                                ) : null}
                                                 <h4 className="font-semibold text-gray-900">{event.title}</h4>
+                                                {event.eventType && (
+                                                    <span className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded">
+                                                        {event.eventType === 'call' ? '📞 Call' :
+                                                         event.eventType === 'formazione' ? '🎓 Formazione' :
+                                                         event.eventType === 'networking' ? '🤝 Networking' :
+                                                         '📅 Evento'}
+                                                    </span>
+                                                )}
                                             </div>
                                             <div className="flex items-center gap-4 text-sm text-gray-600">
                                                 <div className="flex items-center gap-1">
@@ -409,6 +446,7 @@ export default function Calendar({ currentUser }: CalendarProps) {
             {isCreateModalOpen && (
                 <CreateEventModal
                     allUsers={allUsers}
+                    allClients={allClients}
                     currentUser={currentUser}
                     onClose={() => setIsCreateModalOpen(false)}
                     onSuccess={() => {
@@ -585,66 +623,40 @@ function EventDetailModal({ event, currentUser, onClose, onRSVP }: any) {
     );
 }
 
-// Modale Crea Evento
-function CreateEventModal({ allUsers, currentUser, onClose, onSuccess }: any) {
+// Modale Crea Evento Avanzato
+function CreateEventModal({ allUsers, allClients, currentUser, onClose, onSuccess }: any) {
     const [formData, setFormData] = useState({
+        // Campi base
         title: '',
         description: '',
         startTime: '',
         endTime: '',
-        isCall: false,
+        eventType: 'generic' as 'call' | 'networking' | 'formazione' | 'generic',
+        // Campi Call
+        eventSubtype: 'call_interna' as 'call_interna' | 'call_reparto' | 'call_clienti',
+        area: '',
+        clientId: '',
         callLink: '',
-        participantIds: [] as string[],
+        // Campi Formazione
+        trainerName: '',
+        prerequisites: '',
+        level: 'Base' as 'Base' | 'Intermedio' | 'Avanzato',
+        // Campi Networking
+        location: '',
+        externalLink: '',
+        // Inviti
+        invitationRules: {
+            groups: [] as string[],
+            individuals: [] as string[],
+            area: ''
+        },
+        // Ricorrenza
+        recurrenceType: 'none' as 'none' | 'weekly' | 'monthly',
+        recurrenceEndDate: '',
     });
+    const [showIndividualSelector, setShowIndividualSelector] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setError('');
-
-        if (!formData.title || !formData.startTime || !formData.endTime) {
-            setError('Titolo, data inizio e fine sono obbligatori');
-            return;
-        }
-
-        if (new Date(formData.endTime) <= new Date(formData.startTime)) {
-            setError('La data di fine deve essere successiva alla data di inizio');
-            return;
-        }
-
-        if (formData.isCall && !formData.callLink) {
-            setError('Il link per la call è obbligatorio per le call');
-            return;
-        }
-
-        try {
-            setLoading(true);
-            await eventsAPI.create({
-                title: formData.title,
-                description: formData.description || undefined,
-                startTime: formData.startTime,
-                endTime: formData.endTime,
-                isCall: formData.isCall,
-                callLink: formData.isCall ? formData.callLink : undefined,
-                participantIds: formData.isCall ? formData.participantIds : undefined,
-            });
-            onSuccess();
-        } catch (err: any) {
-            setError(err.message || 'Errore nella creazione dell\'evento');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleToggleParticipant = (userId: string) => {
-        setFormData(prev => ({
-            ...prev,
-            participantIds: prev.participantIds.includes(userId)
-                ? prev.participantIds.filter(id => id !== userId)
-                : [...prev.participantIds, userId],
-        }));
-    };
 
     // Precompila data/ora di inizio e fine
     const now = new Date();
@@ -660,15 +672,142 @@ function CreateEventModal({ allUsers, currentUser, onClose, onSuccess }: any) {
         return `${year}-${month}-${day}T${hours}:${minutes}`;
     };
 
+    const formatDateLocal = (date: Date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+
+        if (!formData.title || !formData.startTime || !formData.endTime) {
+            setError('Titolo, data inizio e fine sono obbligatori');
+            return;
+        }
+
+        if (new Date(formData.endTime) <= new Date(formData.startTime)) {
+            setError('La data di fine deve essere successiva alla data di inizio');
+            return;
+        }
+
+        if (formData.eventType === 'call' && !formData.callLink) {
+            setError('Il link per la call è obbligatorio per le call');
+            return;
+        }
+
+        if (formData.eventType === 'call' && formData.eventSubtype === 'call_reparto' && !formData.area) {
+            setError('Seleziona l\'area per la call di reparto');
+            return;
+        }
+
+        if (formData.eventType === 'call' && formData.eventSubtype === 'call_clienti' && !formData.clientId) {
+            setError('Seleziona il cliente per la call con clienti');
+            return;
+        }
+
+        if (formData.recurrenceType !== 'none' && !formData.recurrenceEndDate) {
+            setError('Specifica la data di fine ricorrenza');
+            return;
+        }
+
+        try {
+            setLoading(true);
+            const payload: any = {
+                title: formData.title,
+                description: formData.description || undefined,
+                startTime: formData.startTime,
+                endTime: formData.endTime,
+                eventType: formData.eventType,
+                invitationRules: {
+                    groups: formData.invitationRules.groups,
+                    individuals: formData.invitationRules.individuals,
+                    area: formData.invitationRules.area || undefined,
+                },
+                recurrenceType: formData.recurrenceType,
+                recurrenceEndDate: formData.recurrenceType !== 'none' ? formData.recurrenceEndDate : undefined,
+            };
+
+            // Campi specifici per Call
+            if (formData.eventType === 'call') {
+                payload.eventSubtype = formData.eventSubtype;
+                payload.callLink = formData.callLink;
+                payload.isCall = true;
+                if (formData.eventSubtype === 'call_reparto') {
+                    payload.area = formData.area;
+                }
+                if (formData.eventSubtype === 'call_clienti') {
+                    payload.clientId = formData.clientId;
+                }
+            }
+
+            // Campi specifici per Formazione
+            if (formData.eventType === 'formazione') {
+                payload.trainerName = formData.trainerName || undefined;
+                payload.prerequisites = formData.prerequisites || undefined;
+                payload.level = formData.level;
+            }
+
+            // Campi specifici per Networking
+            if (formData.eventType === 'networking') {
+                payload.location = formData.location || undefined;
+                payload.externalLink = formData.externalLink || undefined;
+            }
+
+            await eventsAPI.create(payload);
+            onSuccess();
+        } catch (err: any) {
+            setError(err.message || 'Errore nella creazione dell\'evento');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleToggleGroup = (group: string) => {
+        setFormData(prev => ({
+            ...prev,
+            invitationRules: {
+                ...prev.invitationRules,
+                groups: prev.invitationRules.groups.includes(group)
+                    ? prev.invitationRules.groups.filter(g => g !== group)
+                    : [...prev.invitationRules.groups, group],
+            },
+        }));
+    };
+
+    const handleToggleIndividual = (userId: string) => {
+        setFormData(prev => ({
+            ...prev,
+            invitationRules: {
+                ...prev.invitationRules,
+                individuals: prev.invitationRules.individuals.includes(userId)
+                    ? prev.invitationRules.individuals.filter(id => id !== userId)
+                    : [...prev.invitationRules.individuals, userId],
+            },
+        }));
+    };
+
+    const availableGroups = [
+        { id: 'manager', label: 'Manager/Responsabili' },
+        { id: 'cda', label: 'CDA' },
+        { id: 'associati', label: 'Associati' },
+    ];
+
+    const isManager = currentUser?.role === 'Manager' || currentUser?.role === 'Responsabile' || 
+                     currentUser?.role === 'Presidente' || currentUser?.role === 'CDA' || 
+                     currentUser?.role === 'Admin';
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="fixed inset-0 bg-black/50" onClick={onClose}></div>
-            <div className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="relative bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
                 <button
                     onClick={onClose}
-                    className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+                    className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 z-10"
                 >
-                    <XCircle className="w-6 h-6" />
+                    <X className="w-6 h-6" />
                 </button>
 
                 <div className="p-6">
@@ -680,7 +819,25 @@ function CreateEventModal({ allUsers, currentUser, onClose, onSuccess }: any) {
                         </div>
                     )}
 
-                    <form onSubmit={handleSubmit} className="space-y-4">
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        {/* Tipo Evento */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Tipo di Evento *
+                            </label>
+                            <select
+                                value={formData.eventType}
+                                onChange={(e) => setFormData(prev => ({ ...prev, eventType: e.target.value as any }))}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            >
+                                <option value="generic">📅 Evento Generico</option>
+                                <option value="call">📞 Call</option>
+                                <option value="formazione">🎓 Formazione</option>
+                                <option value="networking">🤝 Networking</option>
+                            </select>
+                        </div>
+
+                        {/* Campi Base */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Titolo *
@@ -733,71 +890,251 @@ function CreateEventModal({ allUsers, currentUser, onClose, onSuccess }: any) {
                             </div>
                         </div>
 
-                        <div className="flex items-center">
-                            <input
-                                type="checkbox"
-                                id="isCall"
-                                checked={formData.isCall}
-                                onChange={(e) => setFormData(prev => ({ ...prev, isCall: e.target.checked }))}
-                                className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                            />
-                            <label htmlFor="isCall" className="ml-2 text-sm font-medium text-gray-700 flex items-center gap-2">
-                                <Phone className="w-4 h-4" />
-                                È una Call (con inviti)
-                            </label>
-                        </div>
+                        {/* Campi specifici per Call */}
+                        {formData.eventType === 'call' && (
+                            <>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Sottotipo Call *
+                                    </label>
+                                    <select
+                                        value={formData.eventSubtype}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, eventSubtype: e.target.value as any }))}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                    >
+                                        <option value="call_interna">Call Interna</option>
+                                        <option value="call_reparto">Call di Reparto</option>
+                                        <option value="call_clienti">Call con Clienti</option>
+                                    </select>
+                                </div>
 
-                        {formData.isCall && (
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Link per la Call *
-                                </label>
-                                <input
-                                    type="url"
-                                    value={formData.callLink}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, callLink: e.target.value }))}
-                                    placeholder="https://meet.google.com/xxx-xxxx-xxx o link Zoom, Teams, ecc."
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                    required={formData.isCall}
-                                />
-                                <p className="text-xs text-gray-500 mt-1">
-                                    Inserisci il link per la videoconferenza (Google Meet, Zoom, Teams, ecc.)
-                                </p>
-                            </div>
+                                {formData.eventSubtype === 'call_reparto' && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Area *
+                                        </label>
+                                        <select
+                                            value={formData.area}
+                                            onChange={(e) => setFormData(prev => ({ ...prev, area: e.target.value }))}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                            required
+                                        >
+                                            <option value="">Seleziona Area</option>
+                                            <option value="IT">IT</option>
+                                            <option value="Marketing">Marketing</option>
+                                            <option value="Commerciale">Commerciale</option>
+                                            <option value="CDA">CDA</option>
+                                        </select>
+                                    </div>
+                                )}
+
+                                {formData.eventSubtype === 'call_clienti' && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Cliente *
+                                        </label>
+                                        <select
+                                            value={formData.clientId}
+                                            onChange={(e) => setFormData(prev => ({ ...prev, clientId: e.target.value }))}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                            required
+                                        >
+                                            <option value="">Seleziona Cliente</option>
+                                            {allClients.map((client: any) => (
+                                                <option key={client.id} value={client.id}>{client.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Link per la Call *
+                                    </label>
+                                    <input
+                                        type="url"
+                                        value={formData.callLink}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, callLink: e.target.value }))}
+                                        placeholder="https://meet.google.com/xxx-xxxx-xxx"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                        required
+                                    />
+                                </div>
+                            </>
                         )}
 
-                        {formData.isCall && (
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Invita Partecipanti
-                                </label>
-                                <div className="max-h-48 overflow-y-auto border border-gray-300 rounded-lg p-3 space-y-2">
-                                    {allUsers
-                                        .filter((u: any) => u.id !== currentUser?.id)
-                                        .map((user: any) => (
-                                            <label
-                                                key={user.id}
-                                                className="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer"
-                                            >
+                        {/* Campi specifici per Formazione */}
+                        {formData.eventType === 'formazione' && (
+                            <>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Nome Relatore/Formatore
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={formData.trainerName}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, trainerName: e.target.value }))}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Livello
+                                    </label>
+                                    <select
+                                        value={formData.level}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, level: e.target.value as any }))}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                    >
+                                        <option value="Base">Base</option>
+                                        <option value="Intermedio">Intermedio</option>
+                                        <option value="Avanzato">Avanzato</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Prerequisiti (opzionale)
+                                    </label>
+                                    <textarea
+                                        value={formData.prerequisites}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, prerequisites: e.target.value }))}
+                                        placeholder="Es: Conoscenza base di React, Aver letto il documento X"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                        rows={2}
+                                    />
+                                </div>
+                            </>
+                        )}
+
+                        {/* Campi specifici per Networking */}
+                        {formData.eventType === 'networking' && (
+                            <>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Location (Indirizzo)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={formData.location}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Link Esterno (opzionale)
+                                    </label>
+                                    <input
+                                        type="url"
+                                        value={formData.externalLink}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, externalLink: e.target.value }))}
+                                        placeholder="https://..."
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                    />
+                                </div>
+                            </>
+                        )}
+
+                        {/* Widget Selezione Invitati */}
+                        {isManager && (
+                            <div className="border-t pt-6">
+                                <h3 className="text-lg font-semibold mb-4">Inviti</h3>
+                                
+                                {/* Gruppi */}
+                                <div className="mb-4">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Invita per Gruppo
+                                    </label>
+                                    <div className="space-y-2">
+                                        {availableGroups.map(group => (
+                                            <label key={group.id} className="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
                                                 <input
                                                     type="checkbox"
-                                                    checked={formData.participantIds.includes(user.id)}
-                                                    onChange={() => handleToggleParticipant(user.id)}
+                                                    checked={formData.invitationRules.groups.includes(group.id)}
+                                                    onChange={() => handleToggleGroup(group.id)}
                                                     className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
                                                 />
-                                                <div className="ml-3">
-                                                    <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                                                    {user.email && (
-                                                        <div className="text-xs text-gray-500">{user.email}</div>
-                                                    )}
-                                                </div>
+                                                <span className="ml-3 text-sm text-gray-900">{group.label}</span>
                                             </label>
                                         ))}
+                                    </div>
+                                </div>
+
+                                {/* Singoli Utenti */}
+                                <div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowIndividualSelector(!showIndividualSelector)}
+                                        className="mb-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                                    >
+                                        {showIndividualSelector ? 'Nascondi' : 'Aggiungi'} Singoli Utenti
+                                    </button>
+                                    {showIndividualSelector && (
+                                        <div className="max-h-48 overflow-y-auto border border-gray-300 rounded-lg p-3 space-y-2">
+                                            {allUsers
+                                                .filter((u: any) => u.id !== currentUser?.id)
+                                                .map((user: any) => (
+                                                    <label
+                                                        key={user.id}
+                                                        className="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer"
+                                                    >
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={formData.invitationRules.individuals.includes(user.id)}
+                                                            onChange={() => handleToggleIndividual(user.id)}
+                                                            className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                                                        />
+                                                        <div className="ml-3">
+                                                            <div className="text-sm font-medium text-gray-900">{user.name}</div>
+                                                            {user.email && (
+                                                                <div className="text-xs text-gray-500">{user.email}</div>
+                                                            )}
+                                                        </div>
+                                                    </label>
+                                                ))}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )}
 
-                        <div className="flex justify-end gap-3 pt-4">
+                        {/* Ricorrenza */}
+                        <div className="border-t pt-6">
+                            <h3 className="text-lg font-semibold mb-4">Ricorrenza</h3>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Tipo Ricorrenza
+                                    </label>
+                                    <select
+                                        value={formData.recurrenceType}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, recurrenceType: e.target.value as any }))}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                    >
+                                        <option value="none">Non si ripete</option>
+                                        <option value="weekly">Settimanale</option>
+                                        <option value="monthly">Mensile</option>
+                                    </select>
+                                </div>
+                                {formData.recurrenceType !== 'none' && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Data Fine Ricorrenza *
+                                        </label>
+                                        <input
+                                            type="date"
+                                            value={formData.recurrenceEndDate}
+                                            onChange={(e) => setFormData(prev => ({ ...prev, recurrenceEndDate: e.target.value }))}
+                                            min={formData.startTime.split('T')[0]}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                            required={formData.recurrenceType !== 'none'}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end gap-3 pt-4 border-t">
                             <button
                                 type="button"
                                 onClick={onClose}
