@@ -520,7 +520,6 @@ export default function Calendar({ currentUser }: CalendarProps) {
                 <PollViewModal
                     poll={selectedPoll}
                     currentUser={currentUser}
-                    allUsers={allUsers}
                     allClients={allClients}
                     onClose={() => {
                         setIsPollViewModalOpen(false);
