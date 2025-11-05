@@ -25,6 +25,7 @@ Questa documentazione completa copre tutti gli aspetti del sistema gestionale, d
 - **[frontend/Flussi-Dinamici.md](./frontend/Flussi-Dinamici.md)** - Dashboard dinamiche per ruolo, form dinamici, flusso sondaggi
 - **[frontend/Mock-Data-System.md](./frontend/Mock-Data-System.md)** - ⭐ **NUOVO** - Sistema di mock data: funzionamento, configurazione, limitazioni
 - **[frontend/Component-Architecture.md](./frontend/Component-Architecture.md)** - ⭐ **NUOVO** - Linee guida architettura componenti, refactoring, best practices
+- **[frontend/Design-System.md](./frontend/Design-System.md)** - ⭐ **NUOVO** - Design System completo: colori, typography, componenti UI, dark mode, accessibilità
 
 ### 📊 Dati & Analytics
 

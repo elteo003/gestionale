@@ -128,6 +128,7 @@ GESTIONALE-JEINS/
 - **[Flussi Dinamici](./frontend/Flussi-Dinamici.md)** - Logica condizionale e form dinamici
 - **[Mock Data System](./frontend/Mock-Data-System.md)** - Sistema dati simulati per sviluppo
 - **[Component Architecture](./frontend/Component-Architecture.md)** - Linee guida architettura componenti
+- **[Design System](./frontend/Design-System.md)** - ⭐ **NUOVO** - Design System completo con colori, typography, componenti UI, dark mode
 
 ### Documentazione Dati
 
