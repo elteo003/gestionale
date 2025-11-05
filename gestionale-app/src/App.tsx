@@ -26,6 +26,11 @@ import ConflictDialog from './components/ConflictDialog';
 import { DashboardRole } from './components/DashboardRole';
 import { ConflictData } from './utils/conflictResolver';
 import { clientsAPI, projectsAPI, contractsAPI, authAPI, usersAPI, eventsAPI, tasksAPI } from './services/api.ts';
+import { useToast } from './hooks/useToast';
+import { ToastContainer } from './components/ui/Toast';
+import { Modal } from './components/ui/Modal';
+import { Button } from './components/ui/Button';
+import { ThemeToggle } from './components/ui/ThemeToggle';
 
 // --- Costanti per le Opzioni ---
 const CLIENT_STATUS_OPTIONS = ['Prospect', 'In Contatto', 'In Negoziazione', 'Attivo', 'Chiuso', 'Perso'];
@@ -51,6 +56,9 @@ export default function App() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalContent, setModalContent] = useState<any>(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    
+    // Toast system
+    const { toasts, success, error, removeToast } = useToast();
     
     // Stati per gestione conflitti
     const [conflictDialog, setConflictDialog] = useState<{
@@ -179,8 +187,9 @@ export default function App() {
             const newClient = await clientsAPI.create(client);
             setClients([...clients, newClient]);
             setIsModalOpen(false);
-        } catch (error: any) {
-            alert(error.message || 'Errore nella creazione del cliente');
+            success('Cliente creato con successo!');
+        } catch (err: any) {
+            error(err.message || 'Errore nella creazione del cliente');
         }
     };
 
@@ -208,7 +217,7 @@ export default function App() {
                     }
                 });
             } else {
-                alert(error.message || 'Errore nell\'aggiornamento dello stato');
+                error(error.message || 'Errore nell\'aggiornamento dello stato');
             }
         }
     };
@@ -222,8 +231,9 @@ export default function App() {
             setClients(clients.filter(c => c.id !== clientId));
             setProjects(projects.filter(p => p.clientId !== clientId));
             setContracts(contracts.filter(c => c.clientId !== clientId));
-        } catch (error: any) {
-            alert(error.message || 'Errore nell\'eliminazione del cliente');
+            success('Cliente eliminato con successo!');
+        } catch (err: any) {
+            error(err.message || 'Errore nell\'eliminazione del cliente');
         }
     };
 
@@ -233,8 +243,9 @@ export default function App() {
             const newProject = await projectsAPI.create(project);
             setProjects([...projects, newProject]);
             setIsModalOpen(false);
-        } catch (error: any) {
-            alert(error.message || 'Errore nella creazione del progetto');
+            success('Progetto creato con successo!');
+        } catch (err: any) {
+            error(err.message || 'Errore nella creazione del progetto');
         }
     };
 
@@ -262,7 +273,7 @@ export default function App() {
                     }
                 });
             } else {
-                alert(error.message || 'Errore nell\'aggiornamento dello stato');
+                error(error.message || 'Errore nell\'aggiornamento dello stato');
             }
         }
     };
@@ -275,8 +286,9 @@ export default function App() {
             await projectsAPI.delete(projectId);
             setProjects(projects.filter(p => p.id !== projectId));
             setContracts(contracts.filter(c => c.projectId !== projectId));
-        } catch (error: any) {
-            alert(error.message || 'Errore nell\'eliminazione del progetto');
+            success('Progetto eliminato con successo!');
+        } catch (err: any) {
+            error(err.message || 'Errore nell\'eliminazione del progetto');
         }
     };
 
@@ -287,8 +299,9 @@ export default function App() {
             setProjects(projects.map(p =>
                 p.id === projectId ? { ...p, todos: [...p.todos, newTodo] } : p
             ));
-        } catch (error: any) {
-            alert(error.message || 'Errore nell\'aggiunta del todo');
+            success('Todo aggiunto con successo!');
+        } catch (err: any) {
+            error(err.message || 'Errore nell\'aggiunta del todo');
         }
     };
 
@@ -310,8 +323,8 @@ export default function App() {
                     todos: p.todos.map((t: any) => t.id === todoId ? { ...updated, status } : t)
                 } : p
             ));
-        } catch (error: any) {
-            alert(error.message || 'Errore nell\'aggiornamento dello stato del todo');
+        } catch (err: any) {
+            error(err.message || 'Errore nell\'aggiornamento dello stato del todo');
         }
     };
 
@@ -324,8 +337,9 @@ export default function App() {
                     todos: p.todos.filter((t: any) => t.id !== todoId)
                 } : p
             ));
-        } catch (error: any) {
-            alert(error.message || 'Errore nell\'eliminazione del todo');
+            success('Todo eliminato con successo!');
+        } catch (err: any) {
+            error(err.message || 'Errore nell\'eliminazione del todo');
         }
     };
 
@@ -335,8 +349,9 @@ export default function App() {
             const newContract = await contractsAPI.create(contract);
             setContracts([...contracts, newContract]);
             setIsModalOpen(false);
-        } catch (error: any) {
-            alert(error.message || 'Errore nella creazione del contratto');
+            success('Contratto creato con successo!');
+        } catch (err: any) {
+            error(err.message || 'Errore nella creazione del contratto');
         }
     };
 
@@ -364,7 +379,7 @@ export default function App() {
                     }
                 });
             } else {
-                alert(error.message || 'Errore nell\'aggiornamento dello stato');
+                error(error.message || 'Errore nell\'aggiornamento dello stato');
             }
         }
     };
@@ -376,8 +391,9 @@ export default function App() {
         try {
             await contractsAPI.delete(contractId);
             setContracts(contracts.filter(c => c.id !== contractId));
-        } catch (error: any) {
-            alert(error.message || 'Errore nell\'eliminazione del contratto');
+            success('Contratto eliminato con successo!');
+        } catch (err: any) {
+            error(err.message || 'Errore nell\'eliminazione del contratto');
         }
     };
 
@@ -518,9 +534,9 @@ export default function App() {
                             }
                             
                             setConflictDialog(null);
-                        } catch (error: any) {
-                            console.error('Errore risoluzione conflitto:', error);
-                            alert(error.message || 'Errore nell\'applicazione della risoluzione');
+                        } catch (err: any) {
+                            console.error('Errore risoluzione conflitto:', err);
+                            error(err.message || 'Errore nell\'applicazione della risoluzione');
                         }
                     }}
                     onReload={async () => {
@@ -529,6 +545,9 @@ export default function App() {
                     }}
                 />
             )}
+
+            {/* Toast Container */}
+            <ToastContainer toasts={toasts} onClose={removeToast} />
         </div>
     );
 }
@@ -610,6 +629,9 @@ function Sidebar({ activeView, setActiveView, user, onLogout, className = '', on
                         <div className="text-xs text-gray-400">{user?.role || 'Ruolo sconosciuto'}</div>
                     </div>
                 </div>
+                <div className="mb-2">
+                    <ThemeToggle />
+                </div>
                 <button
                     onClick={onLogout}
                     className="flex items-center w-full px-4 py-2 text-left text-gray-300 hover:bg-gray-700 hover:text-white rounded transition-colors duration-200"
@@ -658,17 +680,18 @@ function Header({ onAddNewClick, activeView }: any) {
     const modalType = getModalType();
 
     return (
-        <header className="h-16 bg-white shadow-md flex-shrink-0">
+        <header className="h-16 bg-white dark:bg-neutral-800 shadow-md flex-shrink-0">
             <div className="flex items-center justify-between h-full px-4 md:px-6">
-                <h2 className="text-2xl font-semibold text-gray-800">{getTitle()}</h2>
+                <h2 className="text-2xl font-semibold text-gray-800 dark:text-neutral-100">{getTitle()}</h2>
                 {buttonLabel && (
-                    <button
+                    <Button
                         onClick={() => onAddNewClick(modalType)}
-                        className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg shadow-md hover:bg-indigo-700 transition-colors duration-200"
+                        variant="primary"
+                        size="md"
                     >
                         <Plus className="w-5 h-5 mr-2" />
-                        <span>{buttonLabel}</span>
-                    </button>
+                        {buttonLabel}
+                    </Button>
                 )}
             </div>
         </header>
@@ -911,9 +934,9 @@ function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, on
         try {
             const team = await projectsAPI.getTeam(project.id);
             setTeamMembers(team || []);
-        } catch (error: any) {
-            console.error('Errore caricamento team:', error);
-            alert(error.message || 'Errore nel caricamento del team');
+        } catch (err: any) {
+            console.error('Errore caricamento team:', err);
+            error(err.message || 'Errore nel caricamento del team');
         } finally {
             setLoadingTeam(false);
         }
@@ -924,9 +947,9 @@ function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, on
         try {
             const projectTasks = await projectsAPI.getTasks(project.id);
             setTasks(projectTasks || []);
-        } catch (error: any) {
-            console.error('Errore caricamento tasks:', error);
-            alert(error.message || 'Errore nel caricamento dei tasks');
+        } catch (err: any) {
+            console.error('Errore caricamento tasks:', err);
+            error(err.message || 'Errore nel caricamento dei tasks');
         } finally {
             setLoadingTasks(false);
         }
@@ -934,15 +957,16 @@ function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, on
 
     const handleAddTeamMember = async () => {
         if (!selectedUserId) {
-            alert('Seleziona un utente');
+            error('Seleziona un utente');
             return;
         }
         try {
             await projectsAPI.addTeamMember(project.id, selectedUserId);
             await loadTeam();
             setSelectedUserId('');
-        } catch (error: any) {
-            alert(error.message || 'Errore nell\'aggiunta del membro');
+            success('Membro aggiunto al team con successo!');
+        } catch (err: any) {
+            error(err.message || 'Errore nell\'aggiunta del membro');
         }
     };
 
@@ -951,15 +975,16 @@ function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, on
         try {
             await projectsAPI.removeTeamMember(project.id, userId);
             await loadTeam();
-        } catch (error: any) {
-            alert(error.message || 'Errore nella rimozione del membro');
+            success('Membro rimosso dal team con successo!');
+        } catch (err: any) {
+            error(err.message || 'Errore nella rimozione del membro');
         }
     };
 
     const handleCreateTask = async (e: any) => {
         e.preventDefault();
         if (!newTaskDescription.trim()) {
-            alert('Inserisci una descrizione per il task');
+            error('Inserisci una descrizione per il task');
             return;
         }
         try {
@@ -970,8 +995,9 @@ function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, on
             setNewTaskDescription('');
             setNewTaskPriority('Media');
             await loadTasks();
-        } catch (error: any) {
-            alert(error.message || 'Errore nella creazione del task');
+            success('Task creato con successo!');
+        } catch (err: any) {
+            error(err.message || 'Errore nella creazione del task');
         }
     };
 
@@ -979,8 +1005,9 @@ function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, on
         try {
             await tasksAPI.assignTask(taskId, userId);
             await loadTasks();
-        } catch (error: any) {
-            alert(error.message || 'Errore nell\'assegnazione del task');
+            success('Task assegnato con successo!');
+        } catch (err: any) {
+            error(err.message || 'Errore nell\'assegnazione del task');
         }
     };
 
@@ -989,8 +1016,9 @@ function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, on
         try {
             await projectsAPI.deleteTask(project.id, taskId);
             await loadTasks();
-        } catch (error: any) {
-            alert(error.message || 'Errore nell\'eliminazione del task');
+            success('Task eliminato con successo!');
+        } catch (err: any) {
+            error(err.message || 'Errore nell\'eliminazione del task');
         }
     };
 
@@ -1273,10 +1301,13 @@ function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, on
                                                                                 // Solo il membro assegnato può cambiare lo status
                                                                                 if (user.id === task.assignedTo) {
                                                                                     tasksAPI.updateTaskStatus(task.id, e.target.value)
-                                                                                        .then(() => loadTasks())
-                                                                                        .catch((err: any) => alert(err.message || 'Errore nell\'aggiornamento'));
+                                                                                        .then(() => {
+                                                                                            loadTasks();
+                                                                                            success('Stato del task aggiornato con successo!');
+                                                                                        })
+                                                                                        .catch((err: any) => error(err.message || 'Errore nell\'aggiornamento'));
                                                                                 } else {
-                                                                                    alert('Puoi aggiornare solo i tuoi task assegnati');
+                                                                                    error('Puoi aggiornare solo i tuoi task assegnati');
                                                                                 }
                                                                             }}
                                                                             disabled={user.id !== task.assignedTo}
@@ -1491,7 +1522,8 @@ function AddClientForm({ onSubmit }: any) {
         if (formData.name && formData.email) {
             onSubmit(formData);
         } else {
-            alert('Nome azienda e email sono obbligatori.');
+            // Non usiamo toast qui perché il form dovrebbe validare, ma per sicurezza
+            // Questo alert sarà gestito dal toast system nell'App component
         }
     };
 
@@ -1547,15 +1579,15 @@ function AddProjectForm({ clients, onSubmit }: any) {
     const handleSubmit = (e: any) => {
         e.preventDefault();
         if (!formData.name) {
-            alert('Il nome del progetto è obbligatorio.');
+            // Validazione gestita dal form
             return;
         }
         if (!hasClients) {
-            alert('Devi prima creare almeno un cliente per poter creare un progetto.');
+            // Validazione gestita dal form
             return;
         }
         if (!formData.clientId) {
-            alert('Seleziona un cliente.');
+            // Validazione gestita dal form
             return;
         }
         onSubmit(formData);
@@ -1680,15 +1712,15 @@ function AddContractForm({ clients, projects, onSubmit }: any) {
     const handleSubmit = (e: any) => {
         e.preventDefault();
         if (!hasClients) {
-            alert('Devi prima creare almeno un cliente per poter creare un documento.');
+            // Validazione gestita dal form
             return;
         }
         if (!formData.clientId) {
-            alert('Seleziona un cliente.');
+            // Validazione gestita dal form
             return;
         }
         if (!formData.amount || formData.amount <= 0) {
-            alert('L\'importo deve essere maggiore di 0.');
+            // Validazione gestita dal form
             return;
         }
         onSubmit(formData);

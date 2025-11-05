@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import { authAPI } from '../services/api.ts';
 import { LogIn, UserPlus, Mail, Lock, AlertCircle } from 'lucide-react';
+import { Button } from './ui/Button';
+import { Input } from './ui/Input';
+import { Select } from './ui/Select';
+import { Form, FormField } from './ui/Form';
 
 interface LoginProps {
     onLoginSuccess: (user: any, token: string) => void;
@@ -64,139 +68,120 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                 </div>
 
                 {error && (
-                    <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg flex items-center gap-2">
+                    <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg flex items-center gap-2 dark:bg-red-900 dark:border-red-700 dark:text-red-100">
                         <AlertCircle className="w-5 h-5" />
                         <span>{error}</span>
                     </div>
                 )}
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <Form onSubmit={handleSubmit}>
                     {!isLogin && (
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Nome Completo
-                            </label>
-                            <input
+                        <FormField label="Nome Completo" required>
+                            <Input
                                 type="text"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                 placeholder="Mario Rossi"
-                                required={!isLogin}
+                                required
                             />
-                        </div>
+                        </FormField>
                     )}
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Email
-                        </label>
-                        <div className="relative">
-                            <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                            <input
-                                type="email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                placeholder="mario.rossi@example.com"
-                                required
-                            />
-                        </div>
-                    </div>
+                    <FormField label="Email" required>
+                        <Input
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            placeholder="mario.rossi@example.com"
+                            icon={<Mail className="w-5 h-5" />}
+                            required
+                        />
+                    </FormField>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Password
-                        </label>
-                        <div className="relative">
-                            <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                            <input
-                                type="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                placeholder="••••••••"
-                                required
-                                minLength={6}
-                            />
-                        </div>
-                    </div>
+                    <FormField label="Password" required>
+                        <Input
+                            type="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder="••••••••"
+                            icon={<Lock className="w-5 h-5" />}
+                            required
+                            minLength={6}
+                        />
+                    </FormField>
 
                     {!isLogin && (
                         <>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Ruolo
-                                </label>
-                                <select
+                            <FormField label="Ruolo" required>
+                                <Select
                                     value={role}
                                     onChange={(e) => setRole(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                >
-                                    <option value="Socio">Socio</option>
-                                    <option value="Presidente">Presidente</option>
-                                    <option value="CDA">CDA</option>
-                                    <option value="Tesoreria">Tesoreria</option>
-                                    <option value="Marketing">Marketing</option>
-                                    <option value="Commerciale">Commerciale</option>
-                                    <option value="IT">IT</option>
-                                    <option value="Audit">Audit</option>
-                                    <option value="Responsabile">Responsabile</option>
-                                    <option value="Admin">Admin</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Area di Competenza
-                                </label>
-                                <select
+                                    options={[
+                                        { value: 'Socio', label: 'Socio' },
+                                        { value: 'Presidente', label: 'Presidente' },
+                                        { value: 'CDA', label: 'CDA' },
+                                        { value: 'Tesoreria', label: 'Tesoreria' },
+                                        { value: 'Marketing', label: 'Marketing' },
+                                        { value: 'Commerciale', label: 'Commerciale' },
+                                        { value: 'IT', label: 'IT' },
+                                        { value: 'Audit', label: 'Audit' },
+                                        { value: 'Responsabile', label: 'Responsabile' },
+                                        { value: 'Admin', label: 'Admin' },
+                                    ]}
+                                />
+                            </FormField>
+                            <FormField label="Area di Competenza" required>
+                                <Select
                                     value={area}
                                     onChange={(e) => setArea(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                >
-                                    <option value="CDA">CDA</option>
-                                    <option value="Marketing">Marketing</option>
-                                    <option value="IT">IT</option>
-                                    <option value="Commerciale">Commerciale</option>
-                                </select>
-                            </div>
+                                    options={[
+                                        { value: 'CDA', label: 'CDA' },
+                                        { value: 'Marketing', label: 'Marketing' },
+                                        { value: 'IT', label: 'IT' },
+                                        { value: 'Commerciale', label: 'Commerciale' },
+                                    ]}
+                                />
+                            </FormField>
                         </>
                     )}
 
-                    <button
+                    <Button
                         type="submit"
-                        disabled={loading}
-                        className="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        variant="primary"
+                        size="lg"
+                        isLoading={loading}
+                        className="w-full"
                     >
                         {loading ? (
-                            <span>Caricamento...</span>
+                            'Caricamento...'
                         ) : isLogin ? (
                             <>
-                                <LogIn className="w-5 h-5" />
-                                <span>Accedi</span>
+                                <LogIn className="w-5 h-5 mr-2" />
+                                Accedi
                             </>
                         ) : (
                             <>
-                                <UserPlus className="w-5 h-5" />
-                                <span>Registrati</span>
+                                <UserPlus className="w-5 h-5 mr-2" />
+                                Registrati
                             </>
                         )}
-                    </button>
-                </form>
+                    </Button>
+                </Form>
 
                 <div className="mt-6 text-center">
-                    <button
+                    <Button
                         type="button"
+                        variant="ghost"
                         onClick={() => {
                             setIsLogin(!isLogin);
                             setError('');
                         }}
-                        className="text-indigo-600 hover:text-indigo-700 text-sm font-medium"
+                        className="text-indigo-600 hover:text-indigo-700"
                     >
                         {isLogin
                             ? 'Non hai un account? Registrati'
                             : 'Hai già un account? Accedi'}
-                    </button>
+                    </Button>
                 </div>
             </div>
         </div>
