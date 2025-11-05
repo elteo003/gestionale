@@ -9,7 +9,6 @@ import {
     ChevronRight,
     Trash2,
     ListTodo,
-    X,
     Menu,
     LogOut,
     User,
@@ -705,7 +704,7 @@ function RenderContent({ activeView, user, ...props }: any) {
         case 'clienti':
             return <ClientiList {...props} />;
         case 'progetti':
-            return <ProgettiList {...props} user={user} />;
+            return <ProgettiList {...props} user={user} onError={error} onSuccess={success} />;
         case 'contabilita':
             return <ContabilitaList {...props} />;
         case 'calendario':
@@ -804,7 +803,7 @@ function ClientiList({ clients, onUpdateClientStatus, onDeleteClient }: any) {
     );
 }
 
-function ProgettiList({ projects, onUpdateProjectStatus, onAddTodo, onUpdateTodoStatus, onDeleteTodo, onDeleteProject, getClientName, user, users }: any) {
+function ProgettiList({ projects, onUpdateProjectStatus, onAddTodo, onUpdateTodoStatus, onDeleteTodo, onDeleteProject, getClientName, user, users, onError, onSuccess }: any) {
     // Assicurati che projects sia sempre un array
     const projectsList = Array.isArray(projects) ? projects : [];
     

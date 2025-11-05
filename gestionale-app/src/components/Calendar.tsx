@@ -1373,7 +1373,7 @@ function CreateEventModal({ allUsers, allClients, currentUser, onClose, onSucces
                                             onChange={(e) => setFormData(prev => ({ ...prev, recurrenceEndDate: e.target.value }))}
                                             min={formData.startTime.split('T')[0]}
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                            required={formData.recurrenceType !== 'none'}
+                                            required={true}
                                         />
                                     </div>
                                 )}
@@ -1654,7 +1654,7 @@ function CreatePollModal({ allUsers, currentUser, onClose, onSuccess }: any) {
 }
 
 // Componente Visualizza/Vota Sondaggio
-function PollViewModal({ poll, currentUser, allUsers, allClients, onClose, onSuccess }: any) {
+function PollViewModal({ poll, currentUser, allClients, onClose, onSuccess }: any) {
     const [pollData, setPollData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [activeView, setActiveView] = useState<'vote' | 'results'>('vote');

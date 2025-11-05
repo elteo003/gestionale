@@ -336,7 +336,7 @@ export default function Recruiting({ currentUser }: RecruitingProps) {
 }
 
 // Componente modale per creare sondaggio colloquio (usa la stessa logica di Calendar/CreatePollModal)
-function CreatePollModalForCandidate({ candidate, currentUser, onClose, onSuccess }: any) {
+function CreatePollModalForCandidate({ candidate, onClose, onSuccess }: any) {
     const [allUsers, setAllUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
