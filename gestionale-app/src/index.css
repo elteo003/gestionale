@@ -1,3 +1,117 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ============================================
+   DESIGN SYSTEM - Base Styles
+   ============================================ */
+
+@layer base {
+  /* Typography */
+  body {
+    @apply font-sans text-base text-neutral-900 antialiased;
+  }
+
+  h1 {
+    @apply text-4xl font-bold text-neutral-900;
+  }
+
+  h2 {
+    @apply text-3xl font-semibold text-neutral-900;
+  }
+
+  h3 {
+    @apply text-2xl font-semibold text-neutral-900;
+  }
+
+  h4 {
+    @apply text-xl font-semibold text-neutral-900;
+  }
+
+  h5 {
+    @apply text-lg font-semibold text-neutral-900;
+  }
+
+  h6 {
+    @apply text-base font-semibold text-neutral-900;
+  }
+
+  /* Focus visible */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-primary-500 ring-offset-2;
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    @apply w-2 h-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-neutral-100;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-neutral-300 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-neutral-400;
+  }
+}
+
+/* ============================================
+   Dark Mode Support
+   ============================================ */
+
+@layer base {
+  .dark {
+    color-scheme: dark;
+  }
+
+  .dark body {
+    @apply bg-neutral-900 text-neutral-100;
+  }
+
+  .dark h1,
+  .dark h2,
+  .dark h3,
+  .dark h4,
+  .dark h5,
+  .dark h6 {
+    @apply text-neutral-100;
+  }
+}
+
+/* ============================================
+   Animations
+   ============================================ */
+
+@keyframes wave {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+.animate-wave {
+  animation: wave 1.5s ease-in-out infinite;
+}
+
+/* ============================================
+   Utility Classes
+   ============================================ */
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .text-pretty {
+    text-wrap: pretty;
+  }
+}
