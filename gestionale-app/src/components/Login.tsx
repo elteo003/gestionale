@@ -58,17 +58,17 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 p-4">
-            <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 dark:from-indigo-900 dark:via-purple-900 dark:to-pink-900 p-4 transition-colors duration-300">
+            <div className="bg-white dark:bg-neutral-800 rounded-lg shadow-xl dark:shadow-2xl p-8 w-full max-w-md border border-neutral-200 dark:border-neutral-700">
                 <div className="text-center mb-8">
-                    <h1 className="text-3xl font-bold text-gray-800 mb-2">Gestionale</h1>
-                    <p className="text-gray-600">
+                    <h1 className="text-3xl font-bold text-neutral-900 dark:text-neutral-100 mb-2">Gestionale</h1>
+                    <p className="text-neutral-600 dark:text-neutral-400">
                         {isLogin ? 'Accedi al tuo account' : 'Crea un nuovo account'}
                     </p>
                 </div>
 
                 {error && (
-                    <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg flex items-center gap-2 dark:bg-red-900 dark:border-red-700 dark:text-red-100">
+                    <div className="mb-4 p-3 bg-error-50 dark:bg-error-900/30 border border-error-200 dark:border-error-800 text-error-700 dark:text-error-300 rounded-lg flex items-center gap-2">
                         <AlertCircle className="w-5 h-5" />
                         <span>{error}</span>
                     </div>
@@ -176,7 +176,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                             setIsLogin(!isLogin);
                             setError('');
                         }}
-                        className="text-indigo-600 hover:text-indigo-700"
+                        className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300"
                     >
                         {isLogin
                             ? 'Non hai un account? Registrati'

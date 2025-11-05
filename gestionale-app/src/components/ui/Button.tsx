@@ -11,11 +11,11 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 }
 
 const variantStyles = {
-  primary: 'bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500 active:bg-primary-800 disabled:bg-primary-300',
-  secondary: 'bg-secondary-600 text-white hover:bg-secondary-700 focus:ring-secondary-500 active:bg-secondary-800 disabled:bg-secondary-300',
-  ghost: 'bg-transparent text-primary-600 hover:bg-primary-50 focus:ring-primary-500 active:bg-primary-100',
-  danger: 'bg-error-600 text-white hover:bg-error-700 focus:ring-error-500 active:bg-error-800 disabled:bg-error-300',
-  outline: 'border-2 border-primary-600 text-primary-600 bg-transparent hover:bg-primary-50 focus:ring-primary-500 active:bg-primary-100',
+  primary: 'bg-primary-600 dark:bg-primary-500 text-white hover:bg-primary-700 dark:hover:bg-primary-600 focus:ring-primary-500 dark:focus:ring-primary-400 active:bg-primary-800 dark:active:bg-primary-700 disabled:bg-primary-300 dark:disabled:bg-primary-800 disabled:text-primary-100',
+  secondary: 'bg-secondary-600 dark:bg-secondary-500 text-white hover:bg-secondary-700 dark:hover:bg-secondary-600 focus:ring-secondary-500 dark:focus:ring-secondary-400 active:bg-secondary-800 dark:active:bg-secondary-700 disabled:bg-secondary-300 dark:disabled:bg-secondary-800',
+  ghost: 'bg-transparent dark:bg-transparent text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-neutral-800 focus:ring-primary-500 dark:focus:ring-primary-400 active:bg-primary-100 dark:active:bg-neutral-700',
+  danger: 'bg-error-600 dark:bg-error-500 text-white hover:bg-error-700 dark:hover:bg-error-600 focus:ring-error-500 dark:focus:ring-error-400 active:bg-error-800 dark:active:bg-error-700 disabled:bg-error-300 dark:disabled:bg-error-800',
+  outline: 'border-2 border-primary-600 dark:border-primary-400 text-primary-600 dark:text-primary-400 bg-transparent hover:bg-primary-50 dark:hover:bg-neutral-800 focus:ring-primary-500 dark:focus:ring-primary-400 active:bg-primary-100 dark:active:bg-neutral-700',
 };
 
 const sizeStyles = {

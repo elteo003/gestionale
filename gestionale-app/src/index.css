@@ -7,55 +7,75 @@
    ============================================ */
 
 @layer base {
+  /* Smooth transitions for theme changes */
+  * {
+    @apply transition-colors duration-200 ease-in-out;
+  }
+
   /* Typography */
   body {
-    @apply font-sans text-base text-neutral-900 antialiased;
+    @apply font-sans text-base text-neutral-900 dark:text-neutral-100 bg-white dark:bg-neutral-900 antialiased;
   }
 
   h1 {
-    @apply text-4xl font-bold text-neutral-900;
+    @apply text-4xl font-bold text-neutral-900 dark:text-neutral-100;
   }
 
   h2 {
-    @apply text-3xl font-semibold text-neutral-900;
+    @apply text-3xl font-semibold text-neutral-900 dark:text-neutral-100;
   }
 
   h3 {
-    @apply text-2xl font-semibold text-neutral-900;
+    @apply text-2xl font-semibold text-neutral-900 dark:text-neutral-100;
   }
 
   h4 {
-    @apply text-xl font-semibold text-neutral-900;
+    @apply text-xl font-semibold text-neutral-900 dark:text-neutral-100;
   }
 
   h5 {
-    @apply text-lg font-semibold text-neutral-900;
+    @apply text-lg font-semibold text-neutral-900 dark:text-neutral-100;
   }
 
   h6 {
-    @apply text-base font-semibold text-neutral-900;
+    @apply text-base font-semibold text-neutral-900 dark:text-neutral-100;
   }
 
-  /* Focus visible */
+  /* Links */
+  a {
+    @apply text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300;
+  }
+
+  /* Focus visible - optimized for dark mode */
   *:focus-visible {
-    @apply outline-none ring-2 ring-primary-500 ring-offset-2;
+    @apply outline-none ring-2 ring-primary-500 dark:ring-primary-400 ring-offset-2 dark:ring-offset-neutral-800;
   }
 
-  /* Scrollbar styling */
+  /* Scrollbar styling - full dark mode support */
   ::-webkit-scrollbar {
     @apply w-2 h-2;
   }
 
   ::-webkit-scrollbar-track {
-    @apply bg-neutral-100;
+    @apply bg-neutral-100 dark:bg-neutral-800;
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-neutral-300 rounded-full;
+    @apply bg-neutral-300 dark:bg-neutral-600 rounded-full;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-neutral-400;
+    @apply bg-neutral-400 dark:bg-neutral-500;
+  }
+
+  /* Firefox scrollbar */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(209 213 219) rgb(243 244 246);
+  }
+
+  .dark * {
+    scrollbar-color: rgb(75 85 99) rgb(31 41 55);
   }
 }
 
@@ -68,17 +88,14 @@
     color-scheme: dark;
   }
 
-  .dark body {
-    @apply bg-neutral-900 text-neutral-100;
+  /* Ensure proper color scheme for system UI */
+  .dark {
+    color-scheme: dark;
   }
 
-  .dark h1,
-  .dark h2,
-  .dark h3,
-  .dark h4,
-  .dark h5,
-  .dark h6 {
-    @apply text-neutral-100;
+  /* Prevent flash of unstyled content */
+  html {
+    @apply bg-white dark:bg-neutral-900;
   }
 }
 

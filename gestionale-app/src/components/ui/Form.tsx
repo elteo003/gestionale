@@ -48,14 +48,14 @@ export const FormField: React.FC<FormFieldProps> = ({
   return (
     <div className={cn('flex flex-col gap-1', className)}>
       {label && (
-        <label className="text-sm font-medium text-neutral-700">
+        <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
           {label}
-          {required && <span className="text-error-600 ml-1">*</span>}
+          {required && <span className="text-error-600 dark:text-error-400 ml-1">*</span>}
         </label>
       )}
       {children}
       {error && (
-        <p className="text-sm text-error-600" role="alert">
+        <p className="text-sm text-error-600 dark:text-error-400" role="alert">
           {error}
         </p>
       )}

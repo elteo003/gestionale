@@ -138,7 +138,7 @@ export const Modal: React.FC<ModalProps> = ({
       <div
         ref={modalRef}
         className={cn(
-          'relative bg-white rounded-xl shadow-2xl',
+          'relative bg-white dark:bg-neutral-800 rounded-xl shadow-2xl',
           'w-full',
           sizeStyles[size],
           'max-h-[90vh] flex flex-col',
@@ -150,9 +150,9 @@ export const Modal: React.FC<ModalProps> = ({
       >
         {/* Header */}
         {(title || showCloseButton) && (
-          <div className="flex items-center justify-between p-6 border-b border-neutral-200">
+          <div className="flex items-center justify-between p-6 border-b border-neutral-200 dark:border-neutral-700">
             {title && (
-              <h2 id="modal-title" className="text-2xl font-semibold text-neutral-900">
+              <h2 id="modal-title" className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
                 {title}
               </h2>
             )}
@@ -171,11 +171,11 @@ export const Modal: React.FC<ModalProps> = ({
         )}
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto p-6">{children}</div>
+        <div className="flex-1 overflow-y-auto p-6 text-neutral-900 dark:text-neutral-100">{children}</div>
 
         {/* Footer */}
         {footer && (
-          <div className="flex items-center justify-end gap-3 p-6 border-t border-neutral-200">
+          <div className="flex items-center justify-end gap-3 p-6 border-t border-neutral-200 dark:border-neutral-700">
             {footer}
           </div>
         )}

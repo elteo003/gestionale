@@ -19,9 +19,9 @@ export const Spinner: React.FC<SpinnerProps> = ({
   };
 
   const colorStyles = {
-    primary: 'text-primary-600',
+    primary: 'text-primary-600 dark:text-primary-400',
     white: 'text-white',
-    neutral: 'text-neutral-600',
+    neutral: 'text-neutral-600 dark:text-neutral-400',
   };
 
   return (
@@ -87,7 +87,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({
   return (
     <div
       className={cn(
-        'bg-neutral-200',
+        'bg-neutral-200 dark:bg-neutral-700',
         variantStyles[variant],
         animationStyles[animation],
         className
@@ -120,10 +120,10 @@ export const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
   return (
     <div className="relative">
       <div className="opacity-50 pointer-events-none">{children}</div>
-      <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm">
+      <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-neutral-900/80 backdrop-blur-sm">
         <div className="flex flex-col items-center gap-3">
           <Spinner size="lg" />
-          {message && <p className="text-sm text-neutral-600">{message}</p>}
+          {message && <p className="text-sm text-neutral-600 dark:text-neutral-400">{message}</p>}
         </div>
       </div>
     </div>
