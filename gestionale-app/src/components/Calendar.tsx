@@ -1659,3 +1659,293 @@ function CreatePollModal({ allUsers, currentUser, onClose, onSuccess }: any) {
     );
 }
 
+// Componente Visualizza/Vota Sondaggio
+function PollViewModal({ poll, currentUser, allUsers, allClients, onClose, onSuccess }: any) {
+    const [pollData, setPollData] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+    const [activeView, setActiveView] = useState<'vote' | 'results'>('vote');
+    const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
+    const [voting, setVoting] = useState(false);
+    const [organizingSlot, setOrganizingSlot] = useState<string | null>(null);
+    const [organizeFormData, setOrganizeFormData] = useState({
+        title: '',
+        description: '',
+        eventType: 'call' as 'call' | 'networking' | 'formazione' | 'generic',
+        eventSubtype: 'call_interna' as 'call_interna' | 'call_reparto' | 'call_clienti',
+        area: '',
+        clientId: '',
+        callLink: '',
+    });
+
+    const isCreator = poll.creatorUserId === currentUser?.id;
+
+    useEffect(() => {
+        loadPollDetails();
+    }, [poll.id]);
+
+    const loadPollDetails = async () => {
+        try {
+            setLoading(true);
+            const data = await pollsAPI.getById(poll.id);
+            setPollData(data);
+            if (data.slots) {
+                const userVotes = data.slots
+                    .filter((slot: any) => slot.votes?.some((v: any) => v.userId === currentUser?.id))
+                    .map((slot: any) => slot.id);
+                setSelectedSlots(userVotes);
+            }
+        } catch (error) {
+            console.error('Errore caricamento dettagli sondaggio:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleToggleSlot = (slotId: string) => {
+        setSelectedSlots(prev => 
+            prev.includes(slotId)
+                ? prev.filter(id => id !== slotId)
+                : [...prev, slotId]
+        );
+    };
+
+    const handleVote = async () => {
+        try {
+            setVoting(true);
+            await pollsAPI.vote(poll.id, selectedSlots);
+            await loadPollDetails();
+            alert('Voto registrato con successo!');
+        } catch (error: any) {
+            alert('Errore: ' + (error.message || 'Errore sconosciuto'));
+        } finally {
+            setVoting(false);
+        }
+    };
+
+    const handleOrganize = async (slotId: string) => {
+        if (!organizeFormData.title.trim()) {
+            alert('Inserisci un titolo per l\'evento');
+            return;
+        }
+        try {
+            setOrganizingSlot(slotId);
+            const eventData = { ...organizeFormData, invitationRules: pollData.invitationRules };
+            await pollsAPI.organize(poll.id, { ...eventData, slotId });
+            alert('Evento creato con successo!');
+            onSuccess();
+        } catch (error: any) {
+            alert('Errore: ' + (error.message || 'Errore sconosciuto'));
+        } finally {
+            setOrganizingSlot(null);
+        }
+    };
+
+    if (loading || !pollData) {
+        return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div className="fixed inset-0 bg-black/50" onClick={onClose}></div>
+                <div className="relative bg-white rounded-lg shadow-xl w-full max-w-4xl p-6">
+                    <div className="text-center py-8">Caricamento...</div>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/50" onClick={onClose}></div>
+            <div className="relative bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+                <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 z-10">
+                    <X className="w-6 h-6" />
+                </button>
+                <div className="p-6">
+                    <h2 className="text-2xl font-bold mb-4">{pollData.title}</h2>
+                    <div className="text-sm text-gray-600 mb-6">
+                        Durata prevista: {pollData.durationMinutes} minuti • Creato da: {pollData.creatorName}
+                    </div>
+                    <div className="flex gap-2 mb-6 border-b border-gray-200">
+                        <button
+                            onClick={() => setActiveView('vote')}
+                            className={`px-4 py-2 font-medium transition-colors ${
+                                activeView === 'vote' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-600 hover:text-gray-900'
+                            }`}
+                        >
+                            <CheckSquare className="w-4 h-4 inline mr-2" />Vota Disponibilità
+                        </button>
+                        {isCreator && (
+                            <button
+                                onClick={() => setActiveView('results')}
+                                className={`px-4 py-2 font-medium transition-colors ${
+                                    activeView === 'results' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-600 hover:text-gray-900'
+                                }`}
+                            >
+                                <BarChart3 className="w-4 h-4 inline mr-2" />Risultati
+                            </button>
+                        )}
+                    </div>
+
+                    {activeView === 'vote' && (
+                        <div>
+                            <h3 className="text-lg font-semibold mb-4">Seleziona gli slot per cui sei disponibile</h3>
+                            {pollData.slots && pollData.slots.length > 0 ? (
+                                <div className="space-y-3 mb-6">
+                                    {pollData.slots.map((slot: any) => (
+                                        <label
+                                            key={slot.id}
+                                            className={`flex items-center p-4 border-2 rounded-lg cursor-pointer transition-colors ${
+                                                selectedSlots.includes(slot.id) ? 'border-indigo-600 bg-indigo-50' : 'border-gray-200 hover:border-gray-300'
+                                            }`}
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedSlots.includes(slot.id)}
+                                                onChange={() => handleToggleSlot(slot.id)}
+                                                className="w-5 h-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                                            />
+                                            <div className="ml-4 flex-1">
+                                                <div className="font-medium text-gray-900">
+                                                    {new Date(slot.startTime).toLocaleString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
+                                                </div>
+                                                <div className="text-sm text-gray-600">
+                                                    Fino alle {new Date(slot.endTime).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+                                                </div>
+                                                {slot.votes && slot.votes.length > 0 && (
+                                                    <div className="text-xs text-gray-500 mt-1">
+                                                        {slot.votes.length} {slot.votes.length === 1 ? 'persona disponibile' : 'persone disponibili'}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </label>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-8 text-gray-500">Nessuno slot disponibile</div>
+                            )}
+                            <div className="flex justify-end gap-3 pt-4 border-t">
+                                <button onClick={onClose} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Chiudi</button>
+                                <button onClick={handleVote} disabled={voting || selectedSlots.length === 0} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50">
+                                    {voting ? 'Salvataggio...' : 'Salva Voto'}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeView === 'results' && isCreator && (
+                        <div>
+                            <h3 className="text-lg font-semibold mb-4">Griglia Disponibilità</h3>
+                            {pollData.slots && pollData.slots.length > 0 ? (
+                                <div className="space-y-4">
+                                    {pollData.slots.map((slot: any) => {
+                                        const voters = slot.votes || [];
+                                        const votersCount = voters.length;
+                                        return (
+                                            <div key={slot.id} className="border border-gray-200 rounded-lg p-4">
+                                                <div className="flex items-start justify-between mb-4">
+                                                    <div>
+                                                        <div className="font-semibold text-gray-900">
+                                                            {new Date(slot.startTime).toLocaleString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
+                                                        </div>
+                                                        <div className="text-sm text-gray-600">
+                                                            Fino alle {new Date(slot.endTime).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <div className="text-2xl font-bold text-indigo-600">{votersCount}</div>
+                                                        <div className="text-xs text-gray-600">disponibili</div>
+                                                    </div>
+                                                </div>
+                                                {voters.length > 0 && (
+                                                    <div className="mb-4">
+                                                        <div className="text-sm font-medium text-gray-700 mb-2">Persone disponibili:</div>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {voters.map((vote: any) => (
+                                                                <span key={vote.id} className="px-2 py-1 bg-green-100 text-green-800 rounded text-sm">{vote.userName}</span>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                <button
+                                                    onClick={() => setOrganizingSlot(organizingSlot === slot.id ? null : slot.id)}
+                                                    disabled={votersCount === 0 || organizingSlot !== null}
+                                                    className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    {organizingSlot === slot.id ? 'Annulla' : 'Organizza Evento per questo Slot'}
+                                                </button>
+                                                {organizingSlot === slot.id && (
+                                                    <div className="mt-4 p-4 bg-gray-50 rounded-lg space-y-4">
+                                                        <div>
+                                                            <label className="block text-sm font-medium text-gray-700 mb-1">Titolo Evento *</label>
+                                                            <input type="text" value={organizeFormData.title} onChange={(e) => setOrganizeFormData(prev => ({ ...prev, title: e.target.value }))} placeholder={pollData.title} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-sm font-medium text-gray-700 mb-1">Tipo Evento</label>
+                                                            <select value={organizeFormData.eventType} onChange={(e) => setOrganizeFormData(prev => ({ ...prev, eventType: e.target.value as any }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                                                <option value="generic">📅 Evento Generico</option>
+                                                                <option value="call">📞 Call</option>
+                                                                <option value="formazione">🎓 Formazione</option>
+                                                                <option value="networking">🤝 Networking</option>
+                                                            </select>
+                                                        </div>
+                                                        {organizeFormData.eventType === 'call' && (
+                                                            <>
+                                                                <div>
+                                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Sottotipo Call</label>
+                                                                    <select value={organizeFormData.eventSubtype} onChange={(e) => setOrganizeFormData(prev => ({ ...prev, eventSubtype: e.target.value as any }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                                                        <option value="call_interna">Call Interna</option>
+                                                                        <option value="call_reparto">Call di Reparto</option>
+                                                                        <option value="call_clienti">Call con Clienti</option>
+                                                                    </select>
+                                                                </div>
+                                                                {organizeFormData.eventSubtype === 'call_reparto' && (
+                                                                    <div>
+                                                                        <label className="block text-sm font-medium text-gray-700 mb-1">Area</label>
+                                                                        <select value={organizeFormData.area} onChange={(e) => setOrganizeFormData(prev => ({ ...prev, area: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                                                            <option value="">Seleziona Area</option>
+                                                                            <option value="IT">IT</option>
+                                                                            <option value="Marketing">Marketing</option>
+                                                                            <option value="Commerciale">Commerciale</option>
+                                                                        </select>
+                                                                    </div>
+                                                                )}
+                                                                {organizeFormData.eventSubtype === 'call_clienti' && (
+                                                                    <div>
+                                                                        <label className="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
+                                                                        <select value={organizeFormData.clientId} onChange={(e) => setOrganizeFormData(prev => ({ ...prev, clientId: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                                                            <option value="">Seleziona Cliente</option>
+                                                                            {allClients.map((client: any) => (
+                                                                                <option key={client.id} value={client.id}>{client.name}</option>
+                                                                            ))}
+                                                                        </select>
+                                                                    </div>
+                                                                )}
+                                                                <div>
+                                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Link per la Call</label>
+                                                                    <input type="url" value={organizeFormData.callLink} onChange={(e) => setOrganizeFormData(prev => ({ ...prev, callLink: e.target.value }))} placeholder="https://meet.google.com/xxx-xxxx-xxx" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
+                                                                </div>
+                                                            </>
+                                                        )}
+                                                        <div>
+                                                            <label className="block text-sm font-medium text-gray-700 mb-1">Descrizione (opzionale)</label>
+                                                            <textarea value={organizeFormData.description} onChange={(e) => setOrganizeFormData(prev => ({ ...prev, description: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" rows={3} />
+                                                        </div>
+                                                        <div className="flex gap-3">
+                                                            <button onClick={() => setOrganizingSlot(null)} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Annulla</button>
+                                                            <button onClick={() => handleOrganize(slot.id)} disabled={!organizeFormData.title.trim()} className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50">Crea Evento</button>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <div className="text-center py-8 text-gray-500">Nessuno slot disponibile</div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
