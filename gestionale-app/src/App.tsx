@@ -501,6 +501,8 @@ export default function App() {
                         onDeleteContract={deleteContract}
                         getClientName={getClientName}
                         getProjectName={getProjectName}
+                        onError={error}
+                        onSuccess={success}
                     />
                 </main>
             </div>
@@ -697,14 +699,14 @@ function Header({ onAddNewClick, activeView }: any) {
     );
 }
 
-function RenderContent({ activeView, user, ...props }: any) {
+function RenderContent({ activeView, user, onError, onSuccess, ...props }: any) {
     switch (activeView) {
         case 'dashboard':
             return <Dashboard user={user} {...props} />;
         case 'clienti':
             return <ClientiList {...props} />;
         case 'progetti':
-            return <ProgettiList {...props} user={user} onError={error} onSuccess={success} />;
+            return <ProgettiList {...props} user={user} onError={onError} onSuccess={onSuccess} />;
         case 'contabilita':
             return <ContabilitaList {...props} />;
         case 'calendario':
