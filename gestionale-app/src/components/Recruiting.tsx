@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, UserPlus, X, FileText, Calendar, Trash2, Edit2, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Plus, UserPlus, X, FileText, Calendar, Trash2, XCircle } from 'lucide-react';
 import { candidatesAPI, onboardingAPI, pollsAPI } from '../services/api.ts';
 
 interface Candidate {

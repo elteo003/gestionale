@@ -359,15 +359,26 @@ export const eventsAPI = {
 // Polls API
 export const candidatesAPI = {
     getAll: (filters?: { area?: string; status?: string }) => 
-        apiCall('GET', `/api/candidates${filters ? '?' + new URLSearchParams(filters as any).toString() : ''}`),
-    getById: (id: string) => apiCall('GET', `/api/candidates/${id}`),
-    create: (data: any) => apiCall('POST', '/api/candidates', data),
-    update: (id: string, data: any) => apiCall('PUT', `/api/candidates/${id}`, data),
-    delete: (id: string) => apiCall('DELETE', `/api/candidates/${id}`),
+        apiCall(`/api/candidates${filters ? '?' + new URLSearchParams(filters as any).toString() : ''}`),
+    getById: (id: string) => apiCall(`/api/candidates/${id}`),
+    create: (data: any) => apiCall('/api/candidates', {
+        method: 'POST',
+        body: JSON.stringify(data),
+    }),
+    update: (id: string, data: any) => apiCall(`/api/candidates/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+    }),
+    delete: (id: string) => apiCall(`/api/candidates/${id}`, {
+        method: 'DELETE',
+    }),
 };
 
 export const onboardingAPI = {
-    start: (candidateId: string) => apiCall('POST', '/api/onboarding/start', { candidateId }),
+    start: (candidateId: string) => apiCall('/api/onboarding/start', {
+        method: 'POST',
+        body: JSON.stringify({ candidateId }),
+    }),
 };
 
 export const pollsAPI = {

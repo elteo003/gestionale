@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Clock, Users, CheckCircle, XCircle, Phone, AlertCircle, Briefcase, GraduationCap, Network, Calendar as CalendarIcon, X, FileText, Edit2, Trash2, Calendar as CalendarIcon2, BarChart3, CheckSquare } from 'lucide-react';
+import { Plus, Clock, Users, CheckCircle, XCircle, Phone, AlertCircle, Briefcase, GraduationCap, Network, X, FileText, Edit2, Trash2, Calendar as CalendarIcon2, BarChart3, CheckSquare } from 'lucide-react';
 import { eventsAPI, usersAPI, projectsAPI, clientsAPI, pollsAPI } from '../services/api.ts';
 
 interface Event {
@@ -924,12 +924,6 @@ function CreateEventModal({ allUsers, allClients, currentUser, onClose, onSucces
         return `${year}-${month}-${day}T${hours}:${minutes}`;
     };
 
-    const formatDateLocal = (date: Date) => {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

@@ -730,26 +730,7 @@ function RenderContent({ activeView, user, ...props }: any) {
     }
 }
 
-function Modal({ isOpen, onClose, children }: any) {
-    if (!isOpen) return null;
-
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-            <div className="fixed inset-0 bg-black/50" onClick={onClose}></div>
-            <div className="relative bg-white rounded-lg shadow-xl w-full max-w-lg m-4 max-h-[90vh] overflow-y-auto">
-                <button
-                    onClick={onClose}
-                    className="absolute top-3 right-3 z-10 text-gray-400 hover:text-gray-600"
-                >
-                    <X className="w-6 h-6" />
-                </button>
-                <div className="p-6">
-                    {children || <div className="p-4 text-red-600">Errore: contenuto non disponibile</div>}
-                </div>
-            </div>
-        </div>
-    );
-}
+// Modal locale rimosso - ora usiamo Modal dal Design System
 
 // --- Componenti di Pagina ---
 
@@ -850,13 +831,15 @@ function ProgettiList({ projects, onUpdateProjectStatus, onAddTodo, onUpdateTodo
                     onDeleteProject={onDeleteProject}
                     user={user}
                     users={users}
+                    onError={error}
+                    onSuccess={success}
                 />
             ))}
         </div>
     );
 }
 
-function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, onUpdateTodoStatus, onDeleteTodo, onDeleteProject, user, users }: any) {
+function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, onUpdateTodoStatus, onDeleteTodo, onDeleteProject, user, users, onError, onSuccess }: any) {
     const [newTodoText, setNewTodoText] = useState('');
     const [newTodoPriority, setNewTodoPriority] = useState('Media');
     const [isExpanded, setIsExpanded] = useState(true);
@@ -936,7 +919,7 @@ function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, on
             setTeamMembers(team || []);
         } catch (err: any) {
             console.error('Errore caricamento team:', err);
-            error(err.message || 'Errore nel caricamento del team');
+            if (onError) onError(err.message || 'Errore nel caricamento del team');
         } finally {
             setLoadingTeam(false);
         }
@@ -949,7 +932,7 @@ function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, on
             setTasks(projectTasks || []);
         } catch (err: any) {
             console.error('Errore caricamento tasks:', err);
-            error(err.message || 'Errore nel caricamento dei tasks');
+            if (onError) onError(err.message || 'Errore nel caricamento dei tasks');
         } finally {
             setLoadingTasks(false);
         }
@@ -957,16 +940,16 @@ function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, on
 
     const handleAddTeamMember = async () => {
         if (!selectedUserId) {
-            error('Seleziona un utente');
+            if (onError) onError('Seleziona un utente');
             return;
         }
         try {
             await projectsAPI.addTeamMember(project.id, selectedUserId);
             await loadTeam();
             setSelectedUserId('');
-            success('Membro aggiunto al team con successo!');
+            if (onSuccess) onSuccess('Membro aggiunto al team con successo!');
         } catch (err: any) {
-            error(err.message || 'Errore nell\'aggiunta del membro');
+            if (onError) onError(err.message || 'Errore nell\'aggiunta del membro');
         }
     };
 
@@ -975,16 +958,16 @@ function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, on
         try {
             await projectsAPI.removeTeamMember(project.id, userId);
             await loadTeam();
-            success('Membro rimosso dal team con successo!');
+            if (onSuccess) onSuccess('Membro rimosso dal team con successo!');
         } catch (err: any) {
-            error(err.message || 'Errore nella rimozione del membro');
+            if (onError) onError(err.message || 'Errore nella rimozione del membro');
         }
     };
 
     const handleCreateTask = async (e: any) => {
         e.preventDefault();
         if (!newTaskDescription.trim()) {
-            error('Inserisci una descrizione per il task');
+            if (onError) onError('Inserisci una descrizione per il task');
             return;
         }
         try {
@@ -995,9 +978,9 @@ function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, on
             setNewTaskDescription('');
             setNewTaskPriority('Media');
             await loadTasks();
-            success('Task creato con successo!');
+            if (onSuccess) onSuccess('Task creato con successo!');
         } catch (err: any) {
-            error(err.message || 'Errore nella creazione del task');
+            if (onError) onError(err.message || 'Errore nella creazione del task');
         }
     };
 
@@ -1005,9 +988,9 @@ function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, on
         try {
             await tasksAPI.assignTask(taskId, userId);
             await loadTasks();
-            success('Task assegnato con successo!');
+            if (onSuccess) onSuccess('Task assegnato con successo!');
         } catch (err: any) {
-            error(err.message || 'Errore nell\'assegnazione del task');
+            if (onError) onError(err.message || 'Errore nell\'assegnazione del task');
         }
     };
 
@@ -1016,9 +999,9 @@ function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, on
         try {
             await projectsAPI.deleteTask(project.id, taskId);
             await loadTasks();
-            success('Task eliminato con successo!');
+            if (onSuccess) onSuccess('Task eliminato con successo!');
         } catch (err: any) {
-            error(err.message || 'Errore nell\'eliminazione del task');
+            if (onError) onError(err.message || 'Errore nell\'eliminazione del task');
         }
     };
 
@@ -1303,11 +1286,13 @@ function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, on
                                                                                     tasksAPI.updateTaskStatus(task.id, e.target.value)
                                                                                         .then(() => {
                                                                                             loadTasks();
-                                                                                            success('Stato del task aggiornato con successo!');
+                                                                                            if (onSuccess) onSuccess('Stato del task aggiornato con successo!');
                                                                                         })
-                                                                                        .catch((err: any) => error(err.message || 'Errore nell\'aggiornamento'));
+                                                                                        .catch((err: any) => {
+                                                                                            if (onError) onError(err.message || 'Errore nell\'aggiornamento');
+                                                                                        });
                                                                                 } else {
-                                                                                    error('Puoi aggiornare solo i tuoi task assegnati');
+                                                                                    if (onError) onError('Puoi aggiornare solo i tuoi task assegnati');
                                                                                 }
                                                                             }}
                                                                             disabled={user.id !== task.assignedTo}

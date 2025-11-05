@@ -93,7 +93,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             placeholder="mario.rossi@example.com"
-                            icon={<Mail className="w-5 h-5" />}
+                            leftIcon={<Mail className="w-5 h-5" />}
                             required
                         />
                     </FormField>
@@ -104,7 +104,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             placeholder="••••••••"
-                            icon={<Lock className="w-5 h-5" />}
+                            leftIcon={<Lock className="w-5 h-5" />}
                             required
                             minLength={6}
                         />
