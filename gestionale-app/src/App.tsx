@@ -14,12 +14,14 @@ import {
     LogOut,
     User,
     CalendarIcon,
-    Settings
+    Settings,
+    UserPlus
 } from 'lucide-react';
 import Login from './components/Login';
 import Calendar from './components/Calendar';
 import AdminPanel from './components/AdminPanel';
 import MyTasks from './components/MyTasks';
+import Recruiting from './components/Recruiting';
 import ConflictDialog from './components/ConflictDialog';
 import { DashboardRole } from './components/DashboardRole';
 import { ConflictData } from './utils/conflictResolver';
@@ -555,12 +557,22 @@ function Sidebar({ activeView, setActiveView, user, onLogout, className = '', on
     // Verifica se l'utente è un associato (non manager/admin)
     const isAssociate = user && !isManager;
     
+    // Verifica se l'utente può vedere Recruiting (Manager, CDA, Admin, Responsabile, Presidente)
+    const canViewRecruiting = user && (
+        user.role === 'Manager' ||
+        user.role === 'CDA' ||
+        user.role === 'Admin' ||
+        user.role === 'Responsabile' ||
+        user.role === 'Presidente'
+    );
+
     const navItems = [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { id: 'clienti', label: 'Clienti', icon: Users },
         { id: 'progetti', label: 'Progetti', icon: Briefcase },
         ...(canViewContabilita ? [{ id: 'contabilita', label: 'Contabilità', icon: FileText }] : []),
         { id: 'calendario', label: 'Calendario', icon: CalendarIcon },
+        ...(canViewRecruiting ? [{ id: 'recruiting', label: 'Recruiting', icon: UserPlus }] : []),
         ...(isAssociate ? [{ id: 'mytasks', label: 'I Miei Task', icon: ListTodo }] : []),
         ...(isAdmin ? [{ id: 'amministrazione', label: 'Amministrazione', icon: Settings }] : []),
     ];
@@ -618,6 +630,7 @@ function Header({ onAddNewClick, activeView }: any) {
             case 'progetti': return 'Gestione Progetti';
             case 'contabilita': return 'Gestione Contabilità';
             case 'calendario': return 'Calendario Eventi';
+            case 'recruiting': return 'Recruiting e Onboarding';
             case 'amministrazione': return 'Pannello Amministrazione';
             default: return 'Gestionale';
         }
@@ -674,6 +687,8 @@ function RenderContent({ activeView, user, ...props }: any) {
             return <ContabilitaList {...props} />;
         case 'calendario':
             return <Calendar currentUser={user || null} />;
+        case 'recruiting':
+            return <Recruiting currentUser={user || null} />;
         case 'mytasks':
             // Verifica che l'utente sia valido prima di renderizzare MyTasks
             if (!user) {

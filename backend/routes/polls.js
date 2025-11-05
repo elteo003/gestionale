@@ -64,11 +64,14 @@ router.get('/', async (req, res) => {
             SELECT p.poll_id as id, p.title, p.duration_minutes as "durationMinutes",
                    p.invitation_rules as "invitationRules", p.status,
                    p.final_event_id as "finalEventId",
+                   p.candidate_id as "candidateId",
                    p.created_at as "createdAt",
                    u.name as "creatorName", u.email as "creatorEmail",
-                   p.creator_user_id as "creatorUserId"
+                   p.creator_user_id as "creatorUserId",
+                   c.name as "candidateName", c.email as "candidateEmail"
             FROM scheduling_polls p
             LEFT JOIN users u ON p.creator_user_id = u.user_id
+            LEFT JOIN candidates c ON p.candidate_id = c.candidate_id
             WHERE 1=1
         `;
         const params = [];
@@ -106,11 +109,14 @@ router.get('/:id', async (req, res) => {
             `SELECT p.poll_id as id, p.title, p.duration_minutes as "durationMinutes",
                     p.invitation_rules as "invitationRules", p.status,
                     p.final_event_id as "finalEventId",
+                    p.candidate_id as "candidateId",
                     p.created_at as "createdAt",
                     u.name as "creatorName", u.email as "creatorEmail",
-                    p.creator_user_id as "creatorUserId"
+                    p.creator_user_id as "creatorUserId",
+                    c.name as "candidateName", c.email as "candidateEmail"
              FROM scheduling_polls p
              LEFT JOIN users u ON p.creator_user_id = u.user_id
+             LEFT JOIN candidates c ON p.candidate_id = c.candidate_id
              WHERE p.poll_id = $1`,
             [id]
         );
@@ -178,13 +184,25 @@ router.post('/', async (req, res) => {
     try {
         await client.query('BEGIN');
 
-        const { title, durationMinutes, invitationRules, timeSlots } = req.body;
+        const { title, durationMinutes, invitationRules, timeSlots, candidateId } = req.body;
 
         if (!title || !durationMinutes || !invitationRules || !timeSlots || !Array.isArray(timeSlots) || timeSlots.length === 0) {
             await client.query('ROLLBACK');
             return res.status(400).json({ 
                 error: 'Titolo, durata, regole di invito e almeno uno slot temporale sono obbligatori' 
             });
+        }
+
+        // Se candidateId è fornito, verifica che esista
+        if (candidateId) {
+            const candidateCheck = await client.query(
+                'SELECT candidate_id FROM candidates WHERE candidate_id = $1',
+                [candidateId]
+            );
+            if (candidateCheck.rows.length === 0) {
+                await client.query('ROLLBACK');
+                return res.status(404).json({ error: 'Candidato non trovato' });
+            }
         }
 
         // Verifica permessi: solo Manager, CDA, Admin, Responsabile, Presidente
@@ -204,12 +222,13 @@ router.post('/', async (req, res) => {
 
         // Crea il sondaggio
         const pollResult = await client.query(
-            `INSERT INTO scheduling_polls (title, duration_minutes, invitation_rules, creator_user_id)
-             VALUES ($1, $2, $3, $4)
+            `INSERT INTO scheduling_polls (title, duration_minutes, invitation_rules, creator_user_id, candidate_id)
+             VALUES ($1, $2, $3, $4, $5)
              RETURNING poll_id as id, title, duration_minutes as "durationMinutes",
                        invitation_rules as "invitationRules", status,
+                       candidate_id as "candidateId",
                        created_at as "createdAt"`,
-            [title, durationMinutes, JSON.stringify(invitationRules), req.user.userId]
+            [title, durationMinutes, JSON.stringify(invitationRules), req.user.userId, candidateId || null]
         );
 
         const poll = pollResult.rows[0];
@@ -234,11 +253,14 @@ router.post('/', async (req, res) => {
         const fullPollResult = await pool.query(
             `SELECT p.poll_id as id, p.title, p.duration_minutes as "durationMinutes",
                     p.invitation_rules as "invitationRules", p.status,
+                    p.candidate_id as "candidateId",
                     p.created_at as "createdAt",
                     u.name as "creatorName", u.email as "creatorEmail",
-                    p.creator_user_id as "creatorUserId"
+                    p.creator_user_id as "creatorUserId",
+                    c.name as "candidateName", c.email as "candidateEmail"
              FROM scheduling_polls p
              LEFT JOIN users u ON p.creator_user_id = u.user_id
+             LEFT JOIN candidates c ON p.candidate_id = c.candidate_id
              WHERE p.poll_id = $1`,
             [poll.id]
         );
@@ -367,8 +389,11 @@ router.post('/:id/organize', async (req, res) => {
 
         // Verifica che il sondaggio esista e sia aperto
         const pollResult = await client.query(
-            `SELECT poll_id, title, duration_minutes, status, creator_user_id
-             FROM scheduling_polls WHERE poll_id = $1`,
+            `SELECT p.poll_id, p.title, p.duration_minutes, p.status, p.creator_user_id, p.candidate_id,
+                    c.email as candidate_email, c.name as candidate_name
+             FROM scheduling_polls p
+             LEFT JOIN candidates c ON p.candidate_id = c.candidate_id
+             WHERE p.poll_id = $1`,
             [id]
         );
 
@@ -413,26 +438,43 @@ router.post('/:id/organize', async (req, res) => {
 
         const participantIds = votesResult.rows.map(row => row.user_id);
 
+        // Determina event_type: se c'è candidate_id, usa 'colloquio'
+        const finalEventType = poll.candidate_id ? 'colloquio' : (eventType || 'generic');
+
         // Crea l'evento (usa la stessa logica di events.js)
         const eventResult = await client.query(
             `INSERT INTO events (
                 title, description, start_time, end_time,
-                event_type, event_subtype, area, client_id,
-                invitation_rules, is_call, call_link, creator_id
+                event_type, event_subtype, area, client_id, candidate_id,
+                invitation_rules, recurrence_type, recurrence_end_date,
+                is_call, call_link, creator_id
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
             RETURNING event_id as id, title, description,
                       start_time as "startTime", end_time as "endTime",
                       event_type as "eventType", event_subtype as "eventSubtype",
-                      area, client_id as "clientId",
+                      area, client_id as "clientId", candidate_id as "candidateId",
+                      recurrence_type as "recurrenceType",
+                      recurrence_end_date as "recurrenceEndDate",
                       is_call as "isCall", call_link as "callLink",
                       creator_id as "creatorId", version,
                       created_at as "createdAt"`,
             [
-                title, description || null, slot.start_time, slot.end_time,
-                eventType || 'generic', eventSubtype || null, area || null, clientId || null,
-                invitationRules ? JSON.stringify(invitationRules) : null,
-                eventType === 'call' || false, callLink || null, req.user.userId
+                title || poll.title,
+                description || '',
+                slot.start_time,
+                slot.end_time,
+                finalEventType,
+                eventSubtype || null,
+                area || null,
+                clientId || null,
+                poll.candidate_id || null,
+                invitationRules ? JSON.stringify(invitationRules) : poll.invitation_rules,
+                'none',
+                null,
+                (finalEventType === 'call'),
+                callLink || null,
+                req.user.userId
             ]
         );
 
@@ -464,6 +506,23 @@ router.post('/:id/organize', async (req, res) => {
 
         await client.query('COMMIT');
 
+        // Se c'è un candidato, invia email/iCal (placeholder - implementare con nodemailer/calendly API)
+        if (poll.candidate_id && poll.candidate_email) {
+            try {
+                // TODO: Implementare invio email con nodemailer o servizio esterno
+                // Esempio struttura email:
+                // - Oggetto: "Colloquio con [Nome Azienda] - [Data/Ora]"
+                // - Corpo: Dettagli evento, link meeting se presente
+                // - Allegato iCal (.ics) per aggiunta al calendario
+                console.log(`📧 [PLACEHOLDER] Email da inviare a ${poll.candidate_email} per colloquio il ${slot.start_time}`);
+                console.log(`   Evento: ${eventResult.rows[0].title}`);
+                console.log(`   Dettagli: ${description || 'Nessuna descrizione'}`);
+            } catch (emailError) {
+                console.error('Errore invio email candidato:', emailError);
+                // Non blocchiamo la risposta se l'email fallisce
+            }
+        }
+
         // Recupera l'evento completo con partecipanti
         const participantsResult = await pool.query(
             `SELECT p.participant_id as id, p.status,
@@ -477,7 +536,8 @@ router.post('/:id/organize', async (req, res) => {
         res.status(201).json({ 
             ...event, 
             participants: participantsResult.rows,
-            message: 'Evento creato con successo dal sondaggio'
+            message: 'Evento creato con successo dal sondaggio',
+            candidateNotified: !!poll.candidate_id
         });
     } catch (error) {
         await client.query('ROLLBACK');

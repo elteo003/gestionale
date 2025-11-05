@@ -357,6 +357,19 @@ export const eventsAPI = {
 };
 
 // Polls API
+export const candidatesAPI = {
+    getAll: (filters?: { area?: string; status?: string }) => 
+        apiCall('GET', `/api/candidates${filters ? '?' + new URLSearchParams(filters as any).toString() : ''}`),
+    getById: (id: string) => apiCall('GET', `/api/candidates/${id}`),
+    create: (data: any) => apiCall('POST', '/api/candidates', data),
+    update: (id: string, data: any) => apiCall('PUT', `/api/candidates/${id}`, data),
+    delete: (id: string) => apiCall('DELETE', `/api/candidates/${id}`),
+};
+
+export const onboardingAPI = {
+    start: (candidateId: string) => apiCall('POST', '/api/onboarding/start', { candidateId }),
+};
+
 export const pollsAPI = {
     getAll: (filters: any = {}) => {
         const params = new URLSearchParams();

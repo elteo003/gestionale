@@ -13,6 +13,8 @@ import eventReportsRoutes from './routes/eventReports.js';
 import usersRoutes from './routes/users.js';
 import tasksRoutes from './routes/tasks.js';
 import pollsRoutes from './routes/polls.js';
+import candidatesRoutes from './routes/candidates.js';
+import onboardingRoutes from './routes/onboarding.js';
 
 // Load environment variables
 dotenv.config();
@@ -111,6 +113,8 @@ app.use('/api/contracts', contractsRoutes);
 app.use('/api/events', eventsRoutes);
 app.use('/api/events', eventReportsRoutes);
 app.use('/api/polls', pollsRoutes);
+app.use('/api/candidates', candidatesRoutes);
+app.use('/api/onboarding', onboardingRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/tasks', tasksRoutes);
 console.log('   ✅ Tutte le route registrate');
