@@ -9,8 +9,10 @@ import clientsRoutes from './routes/clients.js';
 import projectsRoutes from './routes/projects.js';
 import contractsRoutes from './routes/contracts.js';
 import eventsRoutes from './routes/events.js';
+import eventReportsRoutes from './routes/eventReports.js';
 import usersRoutes from './routes/users.js';
 import tasksRoutes from './routes/tasks.js';
+import pollsRoutes from './routes/polls.js';
 
 // Load environment variables
 dotenv.config();
@@ -107,6 +109,8 @@ app.use('/api/clients', clientsRoutes);
 app.use('/api/projects', projectsRoutes);
 app.use('/api/contracts', contractsRoutes);
 app.use('/api/events', eventsRoutes);
+app.use('/api/events', eventReportsRoutes);
+app.use('/api/polls', pollsRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/tasks', tasksRoutes);
 console.log('   ✅ Tutte le route registrate');

@@ -338,6 +338,49 @@ export const eventsAPI = {
             method: 'POST',
             body: JSON.stringify({ status }),
         }),
+    // Reports
+    getReports: (eventId: string) => apiCall(`/api/events/${eventId}/reports`),
+    createReport: (eventId: string, reportContent: string) =>
+        apiCall(`/api/events/${eventId}/reports`, {
+            method: 'POST',
+            body: JSON.stringify({ reportContent }),
+        }),
+    updateReport: (eventId: string, reportId: string, reportContent: string) =>
+        apiCall(`/api/events/${eventId}/reports/${reportId}`, {
+            method: 'PUT',
+            body: JSON.stringify({ reportContent }),
+        }),
+    deleteReport: (eventId: string, reportId: string) =>
+        apiCall(`/api/events/${eventId}/reports/${reportId}`, {
+            method: 'DELETE',
+        }),
+};
+
+// Polls API
+export const pollsAPI = {
+    getAll: (filters: any = {}) => {
+        const params = new URLSearchParams();
+        if (filters.status) params.append('status', filters.status);
+        if (filters.creatorId) params.append('creatorId', filters.creatorId);
+        const query = params.toString();
+        return apiCall(`/api/polls${query ? `?${query}` : ''}`);
+    },
+    getById: (id: string) => apiCall(`/api/polls/${id}`),
+    create: (poll: any) =>
+        apiCall('/api/polls', {
+            method: 'POST',
+            body: JSON.stringify(poll),
+        }),
+    vote: (id: string, slotIds: string[]) =>
+        apiCall(`/api/polls/${id}/vote`, {
+            method: 'POST',
+            body: JSON.stringify({ slotIds }),
+        }),
+    organize: (id: string, data: any) =>
+        apiCall(`/api/polls/${id}/organize`, {
+            method: 'POST',
+            body: JSON.stringify(data),
+        }),
 };
 
 // Users API

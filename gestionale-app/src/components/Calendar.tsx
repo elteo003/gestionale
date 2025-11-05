@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Clock, Users, CheckCircle, XCircle, Phone, AlertCircle, Briefcase, GraduationCap, Network, Calendar as CalendarIcon, X } from 'lucide-react';
-import { eventsAPI, usersAPI, projectsAPI, clientsAPI } from '../services/api.ts';
+import { Plus, Clock, Users, CheckCircle, XCircle, Phone, AlertCircle, Briefcase, GraduationCap, Network, Calendar as CalendarIcon, X, FileText, Edit2, Trash2, Calendar as CalendarIcon2 } from 'lucide-react';
+import { eventsAPI, usersAPI, projectsAPI, clientsAPI, pollsAPI } from '../services/api.ts';
 
 interface Event {
     id: string;
@@ -54,6 +54,7 @@ export default function Calendar({ currentUser }: CalendarProps) {
     const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [isPollModalOpen, setIsPollModalOpen] = useState(false);
 
     // Carica eventi e utenti
     useEffect(() => {
@@ -229,13 +230,26 @@ export default function Calendar({ currentUser }: CalendarProps) {
                             Oggi
                         </button>
                     </div>
-                    <button
-                        onClick={() => setIsCreateModalOpen(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-                    >
-                        <Plus className="w-5 h-5" />
-                        <span>Nuovo Evento</span>
-                    </button>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => setIsCreateModalOpen(true)}
+                            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                        >
+                            <Plus className="w-5 h-5" />
+                            <span>Nuovo Evento</span>
+                        </button>
+                        {(currentUser?.role === 'Manager' || currentUser?.role === 'CDA' || 
+                          currentUser?.role === 'Admin' || currentUser?.role === 'Responsabile' || 
+                          currentUser?.role === 'Presidente') && (
+                            <button
+                                onClick={() => setIsPollModalOpen(true)}
+                                className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                            >
+                                <CalendarIcon2 className="w-5 h-5" />
+                                <span>Da Pianificare</span>
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 {/* Griglia Calendario */}
@@ -442,6 +456,19 @@ export default function Calendar({ currentUser }: CalendarProps) {
                 />
             )}
 
+            {/* Modale Crea Sondaggio */}
+            {isPollModalOpen && (
+                <CreatePollModal
+                    allUsers={allUsers}
+                    currentUser={currentUser}
+                    onClose={() => setIsPollModalOpen(false)}
+                    onSuccess={() => {
+                        setIsPollModalOpen(false);
+                        loadData();
+                    }}
+                />
+            )}
+
             {/* Modale Crea Evento */}
             {isCreateModalOpen && (
                 <CreateEventModal
@@ -460,8 +487,39 @@ export default function Calendar({ currentUser }: CalendarProps) {
 }
 
 // Modale Dettaglio Evento
-function EventDetailModal({ event, currentUser, onClose, onRSVP }: any) {
+function EventDetailModal({ event, currentUser, onClose, onRSVP, onRefresh }: any) {
+    const [activeTab, setActiveTab] = useState<'details' | 'reports'>('details');
+    const [reports, setReports] = useState<any[]>([]);
+    const [loadingReports, setLoadingReports] = useState(false);
+    const [isReportEditorOpen, setIsReportEditorOpen] = useState(false);
+    const [editingReport, setEditingReport] = useState<any>(null);
+    
     const myStatus = event.participants?.find((p: Participant) => p.userId === currentUser?.id)?.status;
+    const isEventPast = new Date(event.endTime) < new Date();
+    const isManager = currentUser?.role === 'Manager' || currentUser?.role === 'CDA' || 
+                     currentUser?.role === 'Admin' || currentUser?.role === 'Responsabile' || 
+                     currentUser?.role === 'Presidente';
+    const canCreateReport = isEventPast && (isManager || event.creatorId === currentUser?.id);
+
+    // Carica report quando si apre il tab
+    useEffect(() => {
+        if (activeTab === 'reports' && isEventPast) {
+            loadReports();
+        }
+    }, [activeTab, event.id, isEventPast]);
+
+    const loadReports = async () => {
+        try {
+            setLoadingReports(true);
+            const data = await eventsAPI.getReports(event.id);
+            setReports(Array.isArray(data) ? data : []);
+        } catch (error) {
+            console.error('Errore caricamento report:', error);
+            setReports([]);
+        } finally {
+            setLoadingReports(false);
+        }
+    };
 
     const formatDateTime = (dateString: string) => {
         const date = new Date(dateString);
@@ -503,6 +561,35 @@ function EventDetailModal({ event, currentUser, onClose, onRSVP }: any) {
                 </button>
 
                 <div className="p-6">
+                    {/* Tabs per eventi passati */}
+                    {isEventPast && (
+                        <div className="flex gap-2 mb-4 border-b border-gray-200">
+                            <button
+                                onClick={() => setActiveTab('details')}
+                                className={`px-4 py-2 font-medium transition-colors ${
+                                    activeTab === 'details'
+                                        ? 'border-b-2 border-indigo-600 text-indigo-600'
+                                        : 'text-gray-600 hover:text-gray-900'
+                                }`}
+                            >
+                                Dettagli
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('reports')}
+                                className={`px-4 py-2 font-medium transition-colors ${
+                                    activeTab === 'reports'
+                                        ? 'border-b-2 border-indigo-600 text-indigo-600'
+                                        : 'text-gray-600 hover:text-gray-900'
+                                }`}
+                            >
+                                <FileText className="w-4 h-4 inline mr-2" />
+                                Report e Verbali
+                            </button>
+                        </div>
+                    )}
+
+                    {activeTab === 'details' && (
+                        <>
                     <div className="flex items-start gap-4 mb-4">
                         {event.isCall && (
                             <div className="p-3 bg-blue-100 rounded-lg">
@@ -617,7 +704,107 @@ function EventDetailModal({ event, currentUser, onClose, onRSVP }: any) {
                             </div>
                         </div>
                     )}
+                    </>
+                    )}
+
+                    {activeTab === 'reports' && (
+                        <div>
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-semibold">Report e Verbali</h3>
+                                {canCreateReport && (
+                                    <button
+                                        onClick={() => {
+                                            setEditingReport(null);
+                                            setIsReportEditorOpen(true);
+                                        }}
+                                        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                                    >
+                                        <Plus className="w-4 h-4" />
+                                        Aggiungi Verbale
+                                    </button>
+                                )}
+                            </div>
+
+                            {loadingReports ? (
+                                <div className="text-center py-8 text-gray-500">Caricamento...</div>
+                            ) : reports.length === 0 ? (
+                                <div className="text-center py-8 text-gray-500">
+                                    <FileText className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                                    <p>Nessun report disponibile</p>
+                                    {canCreateReport && (
+                                        <p className="text-sm mt-2">Clicca su "Aggiungi Verbale" per creare il primo report</p>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    {reports.map((report: any) => (
+                                        <div key={report.id} className="border border-gray-200 rounded-lg p-4">
+                                            <div className="flex items-start justify-between mb-2">
+                                                <div>
+                                                    <div className="font-medium text-gray-900">{report.creatorName}</div>
+                                                    <div className="text-sm text-gray-500">
+                                                        {new Date(report.createdAt).toLocaleString('it-IT')}
+                                                    </div>
+                                                </div>
+                                                {report.creatorUserId === currentUser?.id && (
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            onClick={() => {
+                                                                setEditingReport(report);
+                                                                setIsReportEditorOpen(true);
+                                                            }}
+                                                            className="p-2 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                                                            title="Modifica"
+                                                        >
+                                                            <Edit2 className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={async () => {
+                                                                if (confirm('Sei sicuro di voler eliminare questo report?')) {
+                                                                    try {
+                                                                        await eventsAPI.deleteReport(event.id, report.id);
+                                                                        loadReports();
+                                                                    } catch (error: any) {
+                                                                        alert('Errore: ' + (error.message || 'Errore sconosciuto'));
+                                                                    }
+                                                                }
+                                                            }}
+                                                            className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                                            title="Elimina"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="prose max-w-none text-gray-700 whitespace-pre-wrap">
+                                                {report.reportContent}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
+
+                {/* Report Editor Modal */}
+                {isReportEditorOpen && (
+                    <EventReportEditor
+                        event={event}
+                        report={editingReport}
+                        onClose={() => {
+                            setIsReportEditorOpen(false);
+                            setEditingReport(null);
+                        }}
+                        onSuccess={() => {
+                            setIsReportEditorOpen(false);
+                            setEditingReport(null);
+                            loadReports();
+                            if (onRefresh) onRefresh();
+                        }}
+                    />
+                )}
             </div>
         </div>
     );
@@ -1148,6 +1335,256 @@ function CreateEventModal({ allUsers, allClients, currentUser, onClose, onSucces
                                 className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
                             >
                                 {loading ? 'Creazione...' : 'Crea Evento'}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// Componente Editor Report (Verbale)
+function EventReportEditor({ event, report, onClose, onSuccess }: any) {
+    const [content, setContent] = useState(report?.reportContent || '');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+
+        if (!content.trim()) {
+            setError('Il contenuto del report è obbligatorio');
+            return;
+        }
+
+        try {
+            setLoading(true);
+            if (report) {
+                await eventsAPI.updateReport(event.id, report.id, content);
+            } else {
+                await eventsAPI.createReport(event.id, content);
+            }
+            onSuccess();
+        } catch (err: any) {
+            setError(err.message || 'Errore nel salvataggio del report');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/50" onClick={onClose}></div>
+            <div className="relative bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+                <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 z-10">
+                    <X className="w-6 h-6" />
+                </button>
+                <div className="p-6">
+                    <h2 className="text-2xl font-bold mb-6">{report ? 'Modifica Verbale' : 'Nuovo Verbale'}</h2>
+                    {error && (
+                        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg">{error}</div>
+                    )}
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Contenuto del Verbale (Markdown supportato)
+                            </label>
+                            <textarea
+                                value={content}
+                                onChange={(e) => setContent(e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                rows={15}
+                                placeholder="Scrivi il verbale dell'evento qui..."
+                            />
+                            <p className="text-xs text-gray-500 mt-1">
+                                Puoi usare Markdown per formattare il testo (titoli, liste, grassetto, ecc.)
+                            </p>
+                        </div>
+                        <div className="flex justify-end gap-3 pt-4 border-t">
+                            <button type="button" onClick={onClose} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                                Annulla
+                            </button>
+                            <button type="submit" disabled={loading} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50">
+                                {loading ? 'Salvataggio...' : (report ? 'Aggiorna' : 'Salva')}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// Componente Crea Sondaggio
+function CreatePollModal({ allUsers, currentUser, onClose, onSuccess }: any) {
+    const [formData, setFormData] = useState({
+        title: '',
+        durationMinutes: 60,
+        invitationRules: { groups: [] as string[], individuals: [] as string[], area: '' },
+        timeSlots: [] as Array<{ startTime: string; endTime: string }>,
+    });
+    const [showIndividualSelector, setShowIndividualSelector] = useState(false);
+    const [newSlotDate, setNewSlotDate] = useState('');
+    const [newSlotTime, setNewSlotTime] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+
+    const availableGroups = [
+        { id: 'manager', label: 'Manager/Responsabili' },
+        { id: 'cda', label: 'CDA' },
+        { id: 'associati', label: 'Associati' },
+    ];
+
+    const handleToggleGroup = (group: string) => {
+        setFormData(prev => ({
+            ...prev,
+            invitationRules: {
+                ...prev.invitationRules,
+                groups: prev.invitationRules.groups.includes(group)
+                    ? prev.invitationRules.groups.filter(g => g !== group)
+                    : [...prev.invitationRules.groups, group],
+            },
+        }));
+    };
+
+    const handleToggleIndividual = (userId: string) => {
+        setFormData(prev => ({
+            ...prev,
+            invitationRules: {
+                ...prev.invitationRules,
+                individuals: prev.invitationRules.individuals.includes(userId)
+                    ? prev.invitationRules.individuals.filter(id => id !== userId)
+                    : [...prev.invitationRules.individuals, userId],
+            },
+        }));
+    };
+
+    const addTimeSlot = () => {
+        if (!newSlotDate || !newSlotTime) {
+            alert('Seleziona data e ora');
+            return;
+        }
+        const startDateTime = new Date(`${newSlotDate}T${newSlotTime}`);
+        const endDateTime = new Date(startDateTime.getTime() + formData.durationMinutes * 60 * 1000);
+        setFormData(prev => ({
+            ...prev,
+            timeSlots: [...prev.timeSlots, { startTime: startDateTime.toISOString(), endTime: endDateTime.toISOString() }]
+        }));
+        setNewSlotDate('');
+        setNewSlotTime('');
+    };
+
+    const removeTimeSlot = (index: number) => {
+        setFormData(prev => ({ ...prev, timeSlots: prev.timeSlots.filter((_, i) => i !== index) }));
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+        if (!formData.title || formData.durationMinutes <= 0 || formData.timeSlots.length === 0) {
+            setError('Titolo, durata e almeno uno slot temporale sono obbligatori');
+            return;
+        }
+        if (formData.invitationRules.groups.length === 0 && formData.invitationRules.individuals.length === 0) {
+            setError('Seleziona almeno un gruppo o un utente da invitare');
+            return;
+        }
+        try {
+            setLoading(true);
+            await pollsAPI.create(formData);
+            onSuccess();
+        } catch (err: any) {
+            setError(err.message || 'Errore nella creazione del sondaggio');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/50" onClick={onClose}></div>
+            <div className="relative bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+                <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 z-10">
+                    <X className="w-6 h-6" />
+                </button>
+                <div className="p-6">
+                    <h2 className="text-2xl font-bold mb-6">Crea Sondaggio di Disponibilità</h2>
+                    {error && <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg">{error}</div>}
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Titolo Sondaggio *</label>
+                            <input type="text" value={formData.title} onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))} placeholder="Es: Sondaggio per Call Cliente X" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Durata Evento (minuti) *</label>
+                            <input type="number" value={formData.durationMinutes} onChange={(e) => setFormData(prev => ({ ...prev, durationMinutes: parseInt(e.target.value) || 60 }))} min="15" step="15" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required />
+                        </div>
+                        <div className="border-t pt-6">
+                            <h3 className="text-lg font-semibold mb-4">Invita Partecipanti</h3>
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Invita per Gruppo</label>
+                                <div className="space-y-2">
+                                    {availableGroups.map(group => (
+                                        <label key={group.id} className="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
+                                            <input type="checkbox" checked={formData.invitationRules.groups.includes(group.id)} onChange={() => handleToggleGroup(group.id)} className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" />
+                                            <span className="ml-3 text-sm text-gray-900">{group.label}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                            <div>
+                                <button type="button" onClick={() => setShowIndividualSelector(!showIndividualSelector)} className="mb-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                                    {showIndividualSelector ? 'Nascondi' : 'Aggiungi'} Singoli Utenti
+                                </button>
+                                {showIndividualSelector && (
+                                    <div className="max-h-48 overflow-y-auto border border-gray-300 rounded-lg p-3 space-y-2">
+                                        {allUsers.filter((u: any) => u.id !== currentUser?.id).map((user: any) => (
+                                            <label key={user.id} className="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
+                                                <input type="checkbox" checked={formData.invitationRules.individuals.includes(user.id)} onChange={() => handleToggleIndividual(user.id)} className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" />
+                                                <div className="ml-3">
+                                                    <div className="text-sm font-medium text-gray-900">{user.name}</div>
+                                                    {user.email && <div className="text-xs text-gray-500">{user.email}</div>}
+                                                </div>
+                                            </label>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <div className="border-t pt-6">
+                            <h3 className="text-lg font-semibold mb-4">Slot Temporali Proposti</h3>
+                            <div className="grid grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Data</label>
+                                    <input type="date" value={newSlotDate} onChange={(e) => setNewSlotDate(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Ora Inizio</label>
+                                    <input type="time" value={newSlotTime} onChange={(e) => setNewSlotTime(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
+                                </div>
+                            </div>
+                            <button type="button" onClick={addTimeSlot} className="mb-4 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                                <Plus className="w-4 h-4 inline mr-2" />Aggiungi Slot
+                            </button>
+                            {formData.timeSlots.length > 0 && (
+                                <div className="space-y-2">
+                                    {formData.timeSlots.map((slot, index) => (
+                                        <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                            <span className="text-sm">{new Date(slot.startTime).toLocaleString('it-IT')} - {new Date(slot.endTime).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</span>
+                                            <button type="button" onClick={() => removeTimeSlot(index)} className="p-1 text-red-600 hover:bg-red-50 rounded">
+                                                <X className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex justify-end gap-3 pt-4 border-t">
+                            <button type="button" onClick={onClose} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Annulla</button>
+                            <button type="submit" disabled={loading} className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50">
+                                {loading ? 'Creazione...' : 'Crea Sondaggio'}
                             </button>
                         </div>
                     </form>
