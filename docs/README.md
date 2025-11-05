@@ -111,17 +111,41 @@ GESTIONALE-JEINS/
 
 ## Link Utili
 
+### 📑 Indice Completo
+
+- **[Indice Documentazione](./INDEX.md)** - Panoramica completa di tutta la documentazione con navigazione per ruolo
+
 ### Documentazione Tecnica
 
 - **[Backend Documentation](./backend/README.md)** - Architettura, API e convenzioni backend
 - **[API Endpoints](./backend/API-Endpoints.md)** - Documentazione completa di tutti gli endpoint
+- **[Database Migrations](./backend/Database-Migrations.md)** - Guida completa alle migrazioni database
+- **[Optimistic Locking](./backend/Optimistic-Locking.md)** - Dettagli tecnici controllo concorrenza
+- **[Error Handling](./backend/Error-Handling-Patterns.md)** - Pattern gestione errori
+- **[API Versioning](./backend/API-Versioning.md)** - Strategia versioning API (futuro)
+
 - **[Frontend Documentation](./frontend/README.md)** - Architettura componenti e flussi UI
 - **[Flussi Dinamici](./frontend/Flussi-Dinamici.md)** - Logica condizionale e form dinamici
+- **[Mock Data System](./frontend/Mock-Data-System.md)** - Sistema dati simulati per sviluppo
+- **[Component Architecture](./frontend/Component-Architecture.md)** - Linee guida architettura componenti
 
 ### Documentazione Dati
 
 - **[Database Schema](./data/Database-Schema.md)** - Schema completo ERD e dizionario dati
 - **[KPI Analytics](./data/KPI-Analytics.md)** - Metriche e query per dashboard
+- **[Backup & Recovery](./data/Backup-Recovery.md)** - Procedure backup e recovery
+
+### Documentazione Operativa
+
+- **[Security Best Practices](./SECURITY.md)** - Sicurezza, autenticazione, validazione
+- **[Performance Optimization](./PERFORMANCE.md)** - Ottimizzazioni database, caching, frontend
+- **[Development Workflow](./DEVELOPMENT.md)** - Workflow sviluppo, convenzioni, Git
+- **[Testing Strategy](./TESTING.md)** - Strategia testing (futuro)
+- **[Deployment Checklist](./DEPLOYMENT-CHECKLIST.md)** - Checklist pre/post deployment
+- **[Monitoring & Logging](./MONITORING.md)** - Strategia logging e monitoring
+- **[Troubleshooting Guide](./TROUBLESHOOTING.md)** - Problemi comuni e soluzioni
+- **[Limitations & Roadmap](./LIMITATIONS-ROADMAP.md)** - Limitazioni attuali e roadmap futura
+- **[Glossario](./GLOSSARY.md)** - Terminologia tecnica e business
 
 ## Funzionalità Principali
 
