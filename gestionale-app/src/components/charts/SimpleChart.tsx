@@ -149,13 +149,14 @@ export const SimplePieChart: React.FC<SimplePieChartProps> = ({
     <ResponsiveContainer width="100%" height={height}>
       <PieChart>
         <Pie
-          data={data}
+          data={data as any}
           cx="50%"
           cy="50%"
           labelLine={false}
           label={(props: any) => {
-            const { name, percent } = props;
-            return `${name} ${((percent || 0) * 100).toFixed(0)}%`;
+            const name = props.name || '';
+            const percent = typeof props.percent === 'number' ? props.percent : 0;
+            return `${name} ${(percent * 100).toFixed(0)}%`;
           }}
           outerRadius={outerRadius}
           innerRadius={innerRadius}

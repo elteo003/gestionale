@@ -972,7 +972,7 @@ function CreateEventModal({ allUsers, allClients, currentUser, onClose, onSucces
                     area: formData.invitationRules.area || undefined,
                 },
                 recurrenceType: formData.recurrenceType,
-                recurrenceEndDate: formData.recurrenceType !== 'none' ? formData.recurrenceEndDate : undefined,
+                recurrenceEndDate: (formData.recurrenceType === 'weekly' || formData.recurrenceType === 'monthly') ? formData.recurrenceEndDate : undefined,
             };
 
             // Campi specifici per Call

@@ -830,8 +830,8 @@ function ProgettiList({ projects, onUpdateProjectStatus, onAddTodo, onUpdateTodo
                     onDeleteProject={onDeleteProject}
                     user={user}
                     users={users}
-                    onError={error}
-                    onSuccess={success}
+                    onError={onError}
+                    onSuccess={onSuccess}
                 />
             ))}
         </div>
