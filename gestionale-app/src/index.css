@@ -7,11 +7,6 @@
    ============================================ */
 
 @layer base {
-  /* Smooth transitions for theme changes */
-  * {
-    @apply transition-colors duration-200 ease-in-out;
-  }
-
   /* Typography */
   body {
     @apply font-sans text-base text-neutral-900 dark:text-neutral-100 bg-white dark:bg-neutral-900 antialiased;
@@ -43,12 +38,25 @@
 
   /* Links */
   a {
-    @apply text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300;
+    @apply text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors duration-200;
   }
 
   /* Focus visible - optimized for dark mode */
   *:focus-visible {
     @apply outline-none ring-2 ring-primary-500 dark:ring-primary-400 ring-offset-2 dark:ring-offset-neutral-800;
+  }
+
+  /* Selective transitions for theme-aware elements */
+  body,
+  h1, h2, h3, h4, h5, h6,
+  button,
+  input,
+  select,
+  textarea,
+  [class*="bg-"],
+  [class*="text-"],
+  [class*="border-"] {
+    @apply transition-colors duration-200 ease-in-out;
   }
 
   /* Scrollbar styling - full dark mode support */
@@ -68,14 +76,14 @@
     @apply bg-neutral-400 dark:bg-neutral-500;
   }
 
-  /* Firefox scrollbar */
+  /* Firefox scrollbar - using Tailwind colors */
   * {
     scrollbar-width: thin;
-    scrollbar-color: rgb(209 213 219) rgb(243 244 246);
+    scrollbar-color: rgb(209 213 219) rgb(243 244 246); /* neutral-300 neutral-100 */
   }
 
   .dark * {
-    scrollbar-color: rgb(75 85 99) rgb(31 41 55);
+    scrollbar-color: rgb(75 85 99) rgb(31 41 55); /* neutral-600 neutral-800 */
   }
 }
 
@@ -84,11 +92,7 @@
    ============================================ */
 
 @layer base {
-  .dark {
-    color-scheme: dark;
-  }
-
-  /* Ensure proper color scheme for system UI */
+  /* Color scheme for dark mode */
   .dark {
     color-scheme: dark;
   }
@@ -96,6 +100,13 @@
   /* Prevent flash of unstyled content */
   html {
     @apply bg-white dark:bg-neutral-900;
+  }
+
+  /* Fallback per tema iniziale basato su media query (previene FOUC) */
+  @media (prefers-color-scheme: dark) {
+    html:not(.light):not([data-theme]) {
+      color-scheme: dark;
+    }
   }
 }
 
