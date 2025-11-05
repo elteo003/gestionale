@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Clock, Users, CheckCircle, XCircle, Phone, AlertCircle, Briefcase, GraduationCap, Network, Calendar as CalendarIcon, X, FileText, Edit2, Trash2, Calendar as CalendarIcon2 } from 'lucide-react';
+import { Plus, Clock, Users, CheckCircle, XCircle, Phone, AlertCircle, Briefcase, GraduationCap, Network, Calendar as CalendarIcon, X, FileText, Edit2, Trash2, Calendar as CalendarIcon2, BarChart3, CheckSquare } from 'lucide-react';
 import { eventsAPI, usersAPI, projectsAPI, clientsAPI, pollsAPI } from '../services/api.ts';
 
 interface Event {
@@ -49,12 +49,15 @@ export default function Calendar({ currentUser }: CalendarProps) {
     const [assignedProjects, setAssignedProjects] = useState<Project[]>([]);
     const [allUsers, setAllUsers] = useState<any[]>([]);
     const [allClients, setAllClients] = useState<any[]>([]);
+    const [polls, setPolls] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+    const [selectedPoll, setSelectedPoll] = useState<any>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isPollModalOpen, setIsPollModalOpen] = useState(false);
+    const [isPollViewModalOpen, setIsPollViewModalOpen] = useState(false);
 
     // Carica eventi e utenti
     useEffect(() => {
@@ -64,7 +67,7 @@ export default function Calendar({ currentUser }: CalendarProps) {
     const loadData = async () => {
         try {
             setLoading(true);
-            const [eventsData, usersData, projectsData, clientsData] = await Promise.all([
+            const [eventsData, usersData, projectsData, clientsData, pollsData] = await Promise.all([
                 eventsAPI.getAll({}).catch((err: any) => {
                     console.error('Errore caricamento eventi:', err);
                     return [];
@@ -81,18 +84,24 @@ export default function Calendar({ currentUser }: CalendarProps) {
                     console.error('Errore caricamento clienti:', err);
                     return [];
                 }),
+                pollsAPI.getAll({ status: 'open' }).catch((err: any) => {
+                    console.error('Errore caricamento sondaggi:', err);
+                    return [];
+                }),
             ]);
             // Assicurati che siano sempre array
             setEvents(Array.isArray(eventsData) ? eventsData : []);
             setAllUsers(Array.isArray(usersData) ? usersData : []);
             setAssignedProjects(Array.isArray(projectsData) ? projectsData : []);
             setAllClients(Array.isArray(clientsData) ? clientsData : []);
+            setPolls(Array.isArray(pollsData) ? pollsData : []);
         } catch (error) {
             console.error('Errore generale nel caricamento:', error);
             setEvents([]);
             setAllUsers([]);
             setAssignedProjects([]);
             setAllClients([]);
+            setPolls([]);
         } finally {
             setLoading(false);
         }
@@ -337,6 +346,43 @@ export default function Calendar({ currentUser }: CalendarProps) {
                 </div>
             </div>
 
+            {/* Lista Sondaggi Attivi */}
+            {polls.length > 0 && (
+                <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                        <CalendarIcon2 className="w-5 h-5 text-purple-600" />
+                        Sondaggi Attivi
+                    </h3>
+                    <div className="space-y-3">
+                        {polls.map((poll: any) => (
+                            <div
+                                key={poll.id}
+                                onClick={() => {
+                                    setSelectedPoll(poll);
+                                    setIsPollViewModalOpen(true);
+                                }}
+                                className="p-4 border border-purple-200 rounded-lg hover:bg-purple-50 cursor-pointer transition-colors"
+                            >
+                                <div className="flex items-start justify-between">
+                                    <div className="flex-1">
+                                        <div className="font-semibold text-purple-900 mb-1">{poll.title}</div>
+                                        <div className="text-sm text-purple-700">
+                                            Creato da: {poll.creatorName} • Durata: {poll.durationMinutes} minuti
+                                        </div>
+                                        <div className="text-xs text-purple-600 mt-2">
+                                            Clicca per votare o vedere risultati
+                                        </div>
+                                    </div>
+                                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-purple-200 text-purple-800">
+                                        Aperto
+                                    </span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             {/* Lista Eventi del Mese */}
             <div className="bg-white rounded-lg shadow-md p-6">
                 <h3 className="text-lg font-semibold mb-4">Eventi di {monthNames[selectedDate.getMonth()]}</h3>
@@ -464,6 +510,25 @@ export default function Calendar({ currentUser }: CalendarProps) {
                     onClose={() => setIsPollModalOpen(false)}
                     onSuccess={() => {
                         setIsPollModalOpen(false);
+                        loadData();
+                    }}
+                />
+            )}
+
+            {/* Modale Visualizza/Vota Sondaggio */}
+            {isPollViewModalOpen && selectedPoll && (
+                <PollViewModal
+                    poll={selectedPoll}
+                    currentUser={currentUser}
+                    allUsers={allUsers}
+                    allClients={allClients}
+                    onClose={() => {
+                        setIsPollViewModalOpen(false);
+                        setSelectedPoll(null);
+                    }}
+                    onSuccess={() => {
+                        setIsPollViewModalOpen(false);
+                        setSelectedPoll(null);
                         loadData();
                     }}
                 />
