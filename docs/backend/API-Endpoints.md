@@ -598,198 +598,168 @@ Se `recurrenceType = "weekly"` o `"monthly"`:
 
 ## Modulo: Sistema di Pianificazione - Sondaggi (Sezione 12)
 
+### Evoluzione Modello Dati
+
+- Tabella `scheduling_polls`
+  - Nuova colonna `poll_type VARCHAR(32)` con valori ammessi `"fixed_slots"` (default) e `"open_availability"`.
+- Tabella `poll_time_slots`
+  - Utilizzata solo se `poll_type = 'fixed_slots'`.
+- Tabella `poll_votes`
+  - Mantiene le preferenze slot predefiniti.
+- **Nuova tabella** `open_availability_votes`
+  - `vote_id UUID PRIMARY KEY`
+  - `poll_id UUID REFERENCES scheduling_polls(poll_id) ON DELETE CASCADE`
+  - `user_id UUID REFERENCES users(user_id) ON DELETE CASCADE`
+  - `slot_start_time TIMESTAMP NOT NULL`
+  - Indici consigliati su `(poll_id, slot_start_time)` e `(poll_id, user_id)`.
+
+```mermaid
+graph TD
+    SP[(scheduling_polls)] -->|poll_type='fixed_slots'| PTS[(poll_time_slots)]
+    SP -->|poll_type='fixed_slots'| PV[(poll_votes)]
+    SP -->|poll_type='open_availability'| OAV[(open_availability_votes)]
+    OAV -->|aggregazione| HEATMAP[(GET /api/polls/:id/heatmap)]
+```
+
 ### POST /api/polls
 
 **Autenticazione**: Richiesta (Solo Manager/CDA/Admin/Responsabile/Presidente)
 
-**Descrizione**: Crea un nuovo sondaggio di disponibilità. Usato dal flusso "Da Pianificare" nel calendario.
+**Descrizione**: Crea un nuovo sondaggio di disponibilità. Supporta entrambe le modalità.
 
 **Request Body**:
 ```json
 {
-  "title": "Sondaggio per Call Cliente X",
+  "title": "Sondaggio per Workshop X",
   "durationMinutes": 60,
+  "pollType": "fixed_slots",
   "invitationRules": {
     "groups": ["manager", "it"],
     "individuals": ["user_id_1"]
   },
   "timeSlots": [
     {
-      "startTime": "2024-01-15T09:00:00Z",
-      "endTime": "2024-01-15T10:00:00Z"
-    },
-    {
-      "startTime": "2024-01-15T14:00:00Z",
-      "endTime": "2024-01-15T15:00:00Z"
+      "startTime": "2025-01-15T09:00:00Z",
+      "endTime": "2025-01-15T10:00:00Z"
     }
   ],
-  "candidateId": "uuid" // Opzionale, per sondaggi colloquio (Sezione 13)
-}
-```
-
-**Logica Backend**:
-1. Crea riga in `scheduling_polls`
-2. Crea N righe in `poll_time_slots` (uno per ogni slot)
-3. Espande `invitationRules` (stessa logica di `/api/events`)
-4. (TODO: Invia notifiche agli invitati)
-
-**Response Success (201)**:
-```json
-{
-  "id": "uuid",
-  "title": "Sondaggio per Call Cliente X",
-  "durationMinutes": 60,
-  "status": "open",
-  "slots": [
-    {
-      "id": "uuid",
-      "startTime": "2024-01-15T09:00:00Z",
-      "endTime": "2024-01-15T10:00:00Z"
-    }
-  ],
-  "candidateId": "uuid",
-  "candidateName": "Mario Rossi" // Se candidateId presente
-}
-```
-
----
-
-### GET /api/polls
-
-**Autenticazione**: Richiesta
-
-**Descrizione**: Ritorna tutti i sondaggi con filtri opzionali.
-
-**Query Parameters**:
-- `status`: `"open"` o `"closed"`
-- `creatorId`: UUID del creatore
-
-**Response Success (200)**:
-```json
-[
-  {
-    "id": "uuid",
-    "title": "Sondaggio per Call Cliente X",
-    "status": "open",
-    "candidateId": "uuid",
-    "candidateName": "Mario Rossi",
-    "createdAt": "2024-01-01T00:00:00Z"
-  }
-]
-```
-
----
-
-### GET /api/polls/:id
-
-**Autenticazione**: Richiesta
-
-**Descrizione**: Ritorna i dettagli completi di un sondaggio, inclusi slot e voti.
-
-**Response Success (200)**:
-```json
-{
-  "id": "uuid",
-  "title": "Sondaggio per Call Cliente X",
-  "durationMinutes": 60,
-  "status": "open",
-  "slots": [
-    {
-      "id": "uuid",
-      "startTime": "2024-01-15T09:00:00Z",
-      "endTime": "2024-01-15T10:00:00Z",
-      "votes": [
-        {
-          "id": "uuid",
-          "userId": "uuid",
-          "userName": "Mario Rossi"
-        }
-      ]
-    }
-  ],
-  "invitationRules": {...},
   "candidateId": "uuid"
 }
 ```
 
----
-
-### POST /api/polls/:id/vote
-
-**Autenticazione**: Richiesta
-
-**Descrizione**: Registra i voti dell'utente loggato per gli slot disponibili. Usato dagli associati per votare.
-
-**Request Body**:
-```json
-{
-  "slotIds": ["uuid_slot_1", "uuid_slot_2"]
-}
-```
-
-**Logica Backend**:
-1. Elimina tutti i voti esistenti dell'utente per questo sondaggio
-2. Crea nuove righe in `poll_votes` per ogni `slotId`
-
-**Response Success (200)**:
-```json
-{
-  "message": "Voto registrato con successo",
-  "votedSlots": 2
-}
-```
-
----
-
-### POST /api/polls/:id/organize
-
-**Autenticazione**: Richiesta (Solo creatore del sondaggio o Admin)
-
-**Descrizione**: **Bridge da Sondaggio a Evento**. Finalizza il sondaggio creando un evento reale dallo slot selezionato. Logica complessa.
-
-**Request Body**:
-```json
-{
-  "slotId": "uuid",
-  "title": "Call Cliente X - Finalizzata",
-  "description": "Call finale",
-  "eventType": "call",
-  "eventSubtype": "call_clienti",
-  "clientId": "uuid",
-  "callLink": "https://meet.google.com/xxx",
-  "invitationRules": {...} // Opzionale, usa quelle del sondaggio se non fornito
-}
-```
-
-**Logica Backend (Transazione)**:
-
-1. Verifica che il sondaggio sia `open`
-2. Recupera lo slot selezionato (`start_time`, `end_time`)
-3. Recupera i voti per questo slot (questi sono gli invitati)
-4. **Determina `event_type`**:
-   - Se `candidate_id` presente nel sondaggio → `event_type = "colloquio"`
-   - Altrimenti → usa `eventType` fornito
-5. Crea evento in `events`:
-   - Se `candidate_id` → imposta `candidate_id` e `event_type = "colloquio"`
-   - Crea `participants` per gli utenti che hanno votato
-6. Aggiorna sondaggio: `status = 'closed'`, `final_event_id = nuovo_evento_id`
-7. **Se `candidate_id` presente**: Invia email/iCal al candidato (placeholder, TODO)
+- Se `pollType = "fixed_slots"` è obbligatorio fornire da 2 a 5 elementi nell'array `timeSlots`.
+- Se `pollType = "open_availability"` il campo `timeSlots` viene ignorato e non deve essere inviato.
 
 **Response Success (201)**:
 ```json
 {
-  "event": {
-    "id": "uuid",
-    "title": "Call Cliente X - Finalizzata",
-    "startTime": "2024-01-15T09:00:00Z",
-    "endTime": "2024-01-15T10:00:00Z",
-    "eventType": "call",
-    "candidateId": "uuid",
-    "participants": [...]
-  },
-  "message": "Evento creato con successo dal sondaggio",
-  "candidateNotified": true // Se candidato presente
+  "id": "uuid",
+  "title": "Sondaggio per Workshop X",
+  "durationMinutes": 60,
+  "pollType": "fixed_slots",
+  "status": "open",
+  "slots": [
+    {
+      "id": "uuid",
+      "startTime": "2025-01-15T09:00:00Z",
+      "endTime": "2025-01-15T10:00:00Z"
+    }
+  ]
 }
+```
+
+### POST /api/polls/:pollId/availability
+
+**Autenticazione**: Richiesta (Invitati al sondaggio)
+
+**Descrizione**: Registra le disponibilità granulari per un sondaggio heatmap.
+
+**Request Body**:
+```json
+{
+  "slots": [
+    "2025-11-19T10:00:00Z",
+    "2025-11-19T10:30:00Z"
+  ]
+}
+```
+
+- Ogni elemento dell'array rappresenta l'inizio di un intervallo della durata definita dal sondaggio.
+- Il backend sostituisce eventuali selezioni precedenti dell'utente per quel sondaggio.
+
+**Response Success (200)**:
+```json
+{
+  "message": "Disponibilità registrata",
+  "saved": 2
+}
+```
+
+### GET /api/polls/:pollId/heatmap
+
+**Autenticazione**: Richiesta (Solo creatore del sondaggio)
+
+**Descrizione**: Restituisce l'aggregazione delle disponibilità per la modalità heatmap.
+
+**Response Success (200)**:
+```json
+{
+  "pollId": "uuid",
+  "durationMinutes": 60,
+  "slots": [
+    {
+      "slotStartTime": "2025-11-19T10:00:00Z",
+      "availableUsers": 8,
+      "userIds": ["uuid1", "uuid2"]
+    }
+  ]
+}
+```
+
+### GET /api/polls/:pollId
+
+**Autenticazione**: Richiesta
+
+**Descrizione**: Ritorna i dettagli del sondaggio con payload diverso in base alla modalità.
+
+- `pollType = "fixed_slots"`: include `slots` con relative votazioni (`poll_votes`).
+- `pollType = "open_availability"`: include `myAvailabilitySlots` (array degli slot scelti dall'utente corrente) e metadati per la heatmap (es. finestre temporali, timezone).
+
+### POST /api/polls/:pollId/vote
+
+**Nota**: Usato solo per `pollType = "fixed_slots"`. I client devono instradare i voti heatmap verso `/availability`.
+
+### POST /api/polls/:pollId/organize
+
+**Descrizione**: Identica alla versione precedente, ma accetta anche input da heatmap.
+
+```json
+{
+  "slotId": "uuid",                     // Obbligatorio per fixed_slots
+  "slotStartTime": "2025-11-19T10:00:00Z", // Obbligatorio per open_availability
+  "title": "Workshop Definitivo",
+  "eventType": "call",
+  "eventSubtype": "call_interna"
+}
+```
+
+Il backend:
+1. Valida la modalità.
+2. Per heatmap calcola `endTime = slotStartTime + durationMinutes`.
+3. Recupera la lista utenti disponibili da `poll_votes` (classico) o `open_availability_votes` (heatmap).
+4. Crea l'evento in `events` e i partecipanti in `participants`.
+5. Aggiorna `scheduling_polls.status = 'closed'`.
+
+```mermaid
+graph TD
+    A[Organize Request] --> B{poll_type}
+    B -->|fixed_slots| C[Valida slotId]
+    B -->|open_availability| D[Valida slotStartTime]
+    C --> E[Recupera votanti slot]
+    D --> F[Recupera utenti da open_availability_votes]
+    E --> G[Inserisci evento]
+    F --> G
+    G --> H[Aggiorna status sondaggio]
 ```
 
 ---

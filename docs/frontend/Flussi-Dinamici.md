@@ -333,57 +333,102 @@ function RecurrenceWidget({ type, endDate, onChange }: Props) {
 
 ## Flusso Sondaggi (Sezione 12)
 
-### Diagramma di Flusso Completo
+### Modalità Disponibili
+
+Il campo **"Da pianificare"** ora offre due modalità distinte che l'organizzatore seleziona in fase di creazione del sondaggio:
+
+1. **Sondaggio Classico – Proponi Slot (`poll_type = "fixed_slots"`)**
+   - L'organizzatore propone da 2 a 5 slot specifici.
+   - Gli invitati esprimono disponibilità sì/no sugli slot proposti.
+   - I dati persistono in `poll_time_slots` e `poll_votes`.
+   - Il manager finalizza scegliendo lo slot migliore dalla tabella riepilogativa.
+
+2. **Sondaggio Heatmap – Raccogli Disponibilità (`poll_type = "open_availability"`)**
+   - L'organizzatore definisce titolo, invitati e durata dello slot (30/60 minuti, configurabile).
+   - Non vengono proposti slot; gli invitati selezionano liberamente gli intervalli disponibili sul calendario.
+   - Ogni selezione genera righe nella nuova tabella `open_availability_votes`.
+   - Il manager visualizza una heatmap con l'intensità della disponibilità per ogni intervallo e può confermare direttamente lo slot migliore.
+
+### Diagramma Overview Modalità
+
+```mermaid
+graph TD
+    A["Manager: Clic su 'Da pianificare'"] --> B{Seleziona modalità}
+    B -->|Proponi Slot| C[Compila form con slot definiti]
+    C --> D[POST /api/polls (poll_type=fixed_slots)]
+    D --> E[Invitati votano slot]
+    E --> F[Manager sceglie slot migliore]
+    F --> G[Organizza evento finale]
+
+    B -->|Raccogli Disponibilità| H[Definisce durata + invitati]
+    H --> I[POST /api/polls (poll_type=open_availability)]
+    I --> J[Invitati colorano disponibilità]
+    J --> K[Heatmap aggregata]
+    K --> L[Manager clicca slot heatmap]
+    L --> G
+```
+
+### Architettura Heatmap
+
+```mermaid
+graph LR
+    subgraph Frontend
+        V[PollViewModal \n Modalità Heatmap]
+        HM[HeatmapCalendar]
+    end
+    subgraph Backend
+        SP[(scheduling_polls)]
+        OA[(open_availability_votes)]
+    end
+    V -->|POST disponibilità| OA
+    HM -->|GET /api/polls/:id/heatmap| OA
+    SP --> HM
+    HM -->|Selezione slot ottimale| V
+    V -->|POST /api/polls/:id/organize| BackendAPI
+```
+
+### Aggiornamento Mermaid Sequenziale
+
+La sequenza completa ora distingue le due modalità:
 
 ```mermaid
 sequenceDiagram
     participant M as Manager
-    participant C as Calendar Component
-    participant API as Backend API
+    participant C as Calendar
+    participant API as Backend
     participant A as Associati
     participant P as PollViewModal
 
-    Note over M,P: FASE 1: Creazione Sondaggio
-    M->>C: Clicca "Da Pianificare"
-    C->>C: Apre CreatePollModal
-    M->>C: Compila Titolo, Durata, Invitati
-    M->>C: Aggiunge Slot Temporali
-    M->>C: Clicca "Crea Sondaggio"
-    C->>API: POST /api/polls<br/>{title, durationMinutes, timeSlots, invitationRules}
-    API-->>C: {poll: {...}, slots: [...]}
-    C->>C: Chiude modale, ricarica lista sondaggi
+    Note over M,P: Selezione Modalità
+    M->>C: Crea sondaggio "Da pianificare"
+    C->>M: Mostra radio [Proponi Slot | Heatmap]
+    M->>C: Sceglie modalità
 
-    Note over M,P: FASE 2: Votazione Associati
-    A->>C: Vede "Sondaggi Attivi"
-    A->>C: Clicca su un sondaggio
-    C->>P: Apre PollViewModal (tab "Vota")
-    P->>API: GET /api/polls/:id
-    API-->>P: {poll, slots: [{id, startTime, votes: [...]}]}
-    P->>P: Mostra checkbox per ogni slot
-    A->>P: Seleziona slot disponibili
-    A->>P: Clicca "Salva Voto"
-    P->>API: POST /api/polls/:id/vote<br/>{slotIds: [...]}
-    API-->>P: {message: "Voto registrato"}
-    P->>P: Ricarica dati sondaggio
+    alt Modalità Proponi Slot
+        M->>C: Inserisce 2-5 slot
+        C->>API: POST /api/polls<br/>{poll_type: "fixed_slots", timeSlots: [...]}
+        API-->>C: {slots: [...]} (poll_time_slots)
+        A->>P: Vota slot proposti
+        P->>API: POST /api/polls/:id/vote<br/>{slotIds: [...]}
+        API-->>P: Salva in poll_votes
+        M->>P: Tabella risultati
+        M->>API: POST /api/polls/:id/organize
+        API-->>API: Crea evento + participants
+    else Modalità Heatmap
+        M->>C: Imposta durata + invitati
+        C->>API: POST /api/polls<br/>{poll_type: "open_availability"}
+        A->>P: Seleziona griglia disponibilità (drag multi-slot)
+        P->>API: POST /api/polls/:id/availability<br/>{slots: [...]} (uno per ogni intervallo)
+        API-->>P: Righe salvate in open_availability_votes
+        M->>P: Visualizza heatmap (GET /api/polls/:id/heatmap)
+        P->>API: GET /api/polls/:id/heatmap
+        API-->>P: [{slot_start_time, user_count}]
+        M->>P: Clicca slot ottimale
+        M->>API: POST /api/polls/:id/organize
+        API-->>API: Evento creato + poll chiuso
+    end
 
-    Note over M,P: FASE 3: Finalizzazione Manager
-    M->>C: Clicca su sondaggio creato
-    C->>P: Apre PollViewModal (tab "Risultati")
-    P->>API: GET /api/polls/:id
-    API-->>P: {poll, slots: [{votes: [{userName}]}]}
-    P->>P: Mostra griglia disponibilità<br/>(Slot vs Utenti)
-    M->>P: Identifica slot migliore
-    M->>P: Clicca "Organizza Evento per questo Slot"
-    P->>P: Mostra form creazione evento
-    M->>P: Compila titolo, tipo evento, ecc.
-    M->>P: Clicca "Crea Evento"
-    P->>API: POST /api/polls/:id/organize<br/>{slotId, title, eventType, ...}
-    API->>API: Crea evento in Events
-    API->>API: Crea Participants per votanti
-    API->>API: Chiude sondaggio (status = 'closed')
-    API-->>P: {event: {...}, candidateNotified: true}
-    P->>C: Chiude modale, onSuccess()
-    C->>C: Ricarica eventi e sondaggi
+    API-->>C: Aggiorna calendario + chiude sondaggio
 ```
 
 ### Componente: CreatePollModal
@@ -397,16 +442,16 @@ function CreatePollModal({ allUsers, currentUser, onClose, onSuccess }: Props) {
         durationMinutes: 60,
         invitationRules: { groups: [], individuals: [] },
         timeSlots: [] as { startTime: string; endTime: string }[],
-        candidateId: null as string | null, // Per sondaggi colloquio
+        pollType: 'fixed_slots' as 'fixed_slots' | 'open_availability',
+        candidateId: null as string | null,
     });
 
-    const [newSlotDate, setNewSlotDate] = useState('');
-    const [newSlotTime, setNewSlotTime] = useState('');
+    const requiresSlots = formData.pollType === 'fixed_slots';
 
     const addTimeSlot = () => {
+        if (!requiresSlots) return;
         const startTime = new Date(`${newSlotDate}T${newSlotTime}`);
         const endTime = new Date(startTime.getTime() + formData.durationMinutes * 60000);
-        
         setFormData(prev => ({
             ...prev,
             timeSlots: [...prev.timeSlots, {
@@ -424,7 +469,7 @@ function CreatePollModal({ allUsers, currentUser, onClose, onSuccess }: Props) {
 
     return (
         <form onSubmit={handleSubmit}>
-            {/* Form fields */}
+            {/* Form fields + radio per pollType */}
         </form>
     );
 }
@@ -434,17 +479,19 @@ function CreatePollModal({ allUsers, currentUser, onClose, onSuccess }: Props) {
 
 **File**: `components/Calendar.tsx` (PollViewModal)
 
-**Due Tab**:
-1. **"Vota Disponibilità"**: Per associati che votano
-2. **"Risultati"**: Solo per creatore, mostra griglia disponibilità
+**Tab disponibili**:
+1. **"Vota Disponibilità"**: per tutti gli invitati.
+   - Se `pollType === "fixed_slots"` mostra la lista slot tradizionale con checkbox.
+   - Se `pollType === "open_availability"` renderizza il widget heatmap che permette selezione multipla/all drag.
+2. **"Risultati"**: accessibile solo all'organizzatore/manager.
+   - Tabella classica per `fixed_slots`.
+   - Heatmap interattiva per `open_availability`, integrata con endpoint `/api/polls/:id/heatmap`.
 
 ```typescript
 function PollViewModal({ poll, currentUser, onClose, onSuccess }: Props) {
     const [activeView, setActiveView] = useState<'vote' | 'results'>('vote');
-    const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
     const [pollData, setPollData] = useState<any>(null);
-
-    const isCreator = poll.creatorUserId === currentUser?.id;
+    const isHeatmap = pollData?.pollType === 'open_availability';
 
     useEffect(() => {
         loadPollDetails();
@@ -453,75 +500,23 @@ function PollViewModal({ poll, currentUser, onClose, onSuccess }: Props) {
     const loadPollDetails = async () => {
         const data = await pollsAPI.getById(poll.id);
         setPollData(data);
-        
-        // Precarica voti esistenti utente
-        const userVotes = data.slots
-            .filter((slot: any) => slot.votes?.some((v: any) => v.userId === currentUser?.id))
-            .map((slot: any) => slot.id);
-        setSelectedSlots(userVotes);
+    };
+
+    const handleHeatmapVote = async (slots: string[]) => {
+        await pollsAPI.submitAvailability(poll.id, slots);
+        await loadPollDetails();
     };
 
     return (
         <div>
-            {/* Tabs */}
-            <button onClick={() => setActiveView('vote')}>Vota Disponibilità</button>
-            {isCreator && (
-                <button onClick={() => setActiveView('results')}>Risultati</button>
-            )}
-
-            {/* Tab Vota */}
-            {activeView === 'vote' && (
-                <div>
-                    {pollData.slots.map((slot: any) => (
-                        <label key={slot.id}>
-                            <input
-                                type="checkbox"
-                                checked={selectedSlots.includes(slot.id)}
-                                onChange={() => handleToggleSlot(slot.id)}
-                            />
-                            {new Date(slot.startTime).toLocaleString('it-IT')}
-                            {slot.votes.length > 0 && (
-                                <span>{slot.votes.length} disponibili</span>
-                            )}
-                        </label>
-                    ))}
-                    <button onClick={handleVote}>Salva Voto</button>
-                </div>
-            )}
-
-            {/* Tab Risultati */}
-            {activeView === 'results' && isCreator && (
-                <div>
-                    {pollData.slots.map((slot: any) => {
-                        const voters = slot.votes || [];
-                        return (
-                            <div key={slot.id}>
-                                <div>
-                                    <strong>{new Date(slot.startTime).toLocaleString('it-IT')}</strong>
-                                    <span>{voters.length} disponibili</span>
-                                </div>
-                                <div>
-                                    {voters.map((vote: any) => (
-                                        <span key={vote.id}>{vote.userName}</span>
-                                    ))}
-                                </div>
-                                <button onClick={() => handleOrganize(slot.id)}>
-                                    Organizza Evento per questo Slot
-                                </button>
-                                
-                                {/* Form creazione evento (se cliccato) */}
-                                {organizingSlot === slot.id && (
-                                    <CreateEventFormFromPoll 
-                                        slot={slot}
-                                        poll={pollData}
-                                        onSuccess={onSuccess}
-                                    />
-                                )}
-                            </div>
-                        );
-                    })}
-                </div>
-            )}
+            {/* Tabs vote/results */}
+            {activeView === 'vote' && isHeatmap ? (
+                <HeatmapAvailabilitySelector
+                    duration={pollData.durationMinutes}
+                    onSubmit={handleHeatmapVote}
+                    initialSelection={pollData.myAvailabilitySlots}
+                />
+            ) : null}
         </div>
     );
 }

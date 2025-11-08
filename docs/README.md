@@ -165,9 +165,9 @@ Sistema di eventi con:
 
 ### 4. Sistema di Pianificazione (Sondaggi)
 Flusso "Da pianificare" per raccogliere disponibilità prima di creare eventi:
-- Creazione sondaggi con slot temporali
-- Votazione da parte degli associati
-- Visualizzazione risultati e organizzazione evento finale
+- Modalità **Sondaggio Classico**: creazione 2-5 slot, votazione sì/no, tabella riepilogo manager.
+- Modalità **Sondaggio Heatmap**: raccolta disponibilità libera con drag-and-drop, heatmap aggregata, creazione evento diretta sullo slot migliore.
+- Finalizzazione con ponte automatico verso `events` e `participants`.
 
 ### 5. Modulo HR (Recruiting e Onboarding)
 Gestione completa del processo di assunzione:
