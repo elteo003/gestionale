@@ -557,6 +557,7 @@ function EventDetailModal({ event, currentUser, onClose, onRSVP, onRefresh }: an
     const [loadingReports, setLoadingReports] = useState(false);
     const [isReportEditorOpen, setIsReportEditorOpen] = useState(false);
     const [editingReport, setEditingReport] = useState<any>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
     const isCreator = currentUser?.id === event.creatorId;
     const myStatus = event.participants?.find((p: Participant) => p.userId === currentUser?.id)?.status;
     const pendingParticipants = event.participants?.filter((p: Participant) => p.status === 'pending') ?? [];
@@ -614,10 +615,46 @@ function EventDetailModal({ event, currentUser, onClose, onRSVP, onRefresh }: an
         }
     };
 
+    const handleDeleteEvent = async () => {
+        if (!isCreator || isDeleting) return;
+
+        const confirmed = window.confirm('Sei sicuro di voler eliminare questo evento? Questa azione non può essere annullata.');
+        if (!confirmed) {
+          return;
+        }
+
+        try {
+          setIsDeleting(true);
+          await eventsAPI.delete(event.id);
+          alert('Evento eliminato con successo!');
+          if (typeof onClose === 'function') {
+            onClose();
+          }
+          if (typeof onRefresh === 'function') {
+            await onRefresh();
+          }
+        } catch (error: any) {
+          console.error('Errore eliminazione evento:', error);
+          alert('Errore durante l\'eliminazione dell\'evento: ' + (error?.message || 'Errore sconosciuto'));
+        } finally {
+          setIsDeleting(false);
+        }
+    };
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="fixed inset-0 bg-black/50" onClick={onClose}></div>
             <div className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                {isCreator && (
+                    <button
+                        onClick={handleDeleteEvent}
+                        disabled={isDeleting}
+                        className="absolute top-4 right-14 text-red-600 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        title={isDeleting ? 'Eliminazione in corso...' : 'Elimina evento'}
+                    >
+                        <Trash2 className="w-6 h-6" />
+                    </button>
+                )}
                 <button
                     onClick={onClose}
                     className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
