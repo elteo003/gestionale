@@ -2058,14 +2058,14 @@ function PollViewModal({ poll, currentUser, allClients, onClose, onSuccess }: an
             <X className="w-6 h-6" />
           </button>
           <div className="p-6">
-            <div className="flex flex-col gap-3 mb-4 md:flex-row md:items-start md:justify-between">
+            <div className="flex flex-col gap-3 mb-4 md:flex-row md:items-center md:justify-between md:pr-14">
               <h2 className="text-2xl font-bold">{pollData.title}</h2>
               {isCreator && !isClosed && (
                 <button
                   type="button"
                   onClick={handleClosePoll}
                   disabled={closing}
-                  className="inline-flex items-center justify-center px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg transition-colors hover:bg-red-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="inline-flex items-center justify-center self-start px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg transition-colors hover:bg-red-700 disabled:opacity-60 disabled:cursor-not-allowed md:self-center"
                 >
                   {closing ? 'Chiusura...' : 'Chiudi sondaggio'}
                 </button>
