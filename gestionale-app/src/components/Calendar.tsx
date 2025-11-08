@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Clock, Users, CheckCircle, XCircle, Phone, AlertCircle, Briefcase, GraduationCap, Network, X, FileText, Edit2, Trash2, Calendar as CalendarIcon2, BarChart3, CheckSquare } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { Plus, Clock, Users, CheckCircle, XCircle, Phone, AlertCircle, Briefcase, GraduationCap, Network, X, FileText, Edit2, Trash2, Calendar as CalendarIcon2, BarChart3, CheckSquare, ChevronLeft, ChevronRight } from 'lucide-react';
 import { eventsAPI, usersAPI, projectsAPI, clientsAPI, pollsAPI } from '../services/api.ts';
+import { cn } from '../utils/cn';
 
 interface Event {
     id: string;
@@ -29,6 +30,16 @@ interface Participant {
     userName: string;
     userEmail: string;
     status: 'pending' | 'accepted' | 'declined';
+}
+
+interface OrganizeFormState {
+    title: string;
+    description: string;
+    eventType: 'call' | 'networking' | 'formazione' | 'generic';
+    eventSubtype: 'call_interna' | 'call_reparto' | 'call_clienti';
+    area: string;
+    clientId: string;
+    callLink: string;
 }
 
 interface CalendarProps {
@@ -1535,7 +1546,8 @@ function CreatePollModal({ allUsers, currentUser, onClose, onSuccess }: any) {
         title: '',
         durationMinutes: 60,
         invitationRules: { groups: [] as string[], individuals: [] as string[], area: '' },
-        timeSlots: [] as Array<{ startTime: string; endTime: string }>,
+        timeSlots: [] as Array<{ startTime: string; endTime: string }> ,
+        pollType: 'fixed_slots' as 'fixed_slots' | 'open_availability',
     });
     const [showIndividualSelector, setShowIndividualSelector] = useState(false);
     const [newSlotDate, setNewSlotDate] = useState('');
@@ -1573,7 +1585,18 @@ function CreatePollModal({ allUsers, currentUser, onClose, onSuccess }: any) {
         }));
     };
 
+    const handlePollTypeChange = (type: 'fixed_slots' | 'open_availability') => {
+        setFormData(prev => ({
+            ...prev,
+            pollType: type,
+            timeSlots: type === 'fixed_slots' ? prev.timeSlots : [],
+        }));
+    };
+
     const addTimeSlot = () => {
+        if (formData.pollType !== 'fixed_slots') {
+            return;
+        }
         if (!newSlotDate || !newSlotTime) {
             alert('Seleziona data e ora');
             return;
@@ -1595,8 +1618,12 @@ function CreatePollModal({ allUsers, currentUser, onClose, onSuccess }: any) {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
-        if (!formData.title || formData.durationMinutes <= 0 || formData.timeSlots.length === 0) {
-            setError('Titolo, durata e almeno uno slot temporale sono obbligatori');
+        if (!formData.title || formData.durationMinutes <= 0) {
+            setError('Titolo e durata sono obbligatori');
+            return;
+        }
+        if (formData.pollType === 'fixed_slots' && formData.timeSlots.length === 0) {
+            setError('Per la modalità "Proponi Slot" devi aggiungere almeno uno slot temporale');
             return;
         }
         if (formData.invitationRules.groups.length === 0 && formData.invitationRules.individuals.length === 0) {
@@ -1605,7 +1632,22 @@ function CreatePollModal({ allUsers, currentUser, onClose, onSuccess }: any) {
         }
         try {
             setLoading(true);
-            await pollsAPI.create(formData);
+            const payload: any = {
+                title: formData.title,
+                durationMinutes: formData.durationMinutes,
+                invitationRules: formData.invitationRules,
+                pollType: formData.pollType,
+            };
+            if (formData.invitationRules.area) {
+                payload.invitationRules = {
+                    ...formData.invitationRules,
+                    area: formData.invitationRules.area,
+                };
+            }
+            if (formData.pollType === 'fixed_slots') {
+                payload.timeSlots = formData.timeSlots;
+            }
+            await pollsAPI.create(payload);
             onSuccess();
         } catch (err: any) {
             setError(err.message || 'Errore nella creazione del sondaggio');
@@ -1629,9 +1671,38 @@ function CreatePollModal({ allUsers, currentUser, onClose, onSuccess }: any) {
                             <label className="block text-sm font-medium text-gray-700 mb-1">Titolo Sondaggio *</label>
                             <input type="text" value={formData.title} onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))} placeholder="Es: Sondaggio per Call Cliente X" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required />
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Durata Evento (minuti) *</label>
-                            <input type="number" value={formData.durationMinutes} onChange={(e) => setFormData(prev => ({ ...prev, durationMinutes: parseInt(e.target.value) || 60 }))} min="15" step="15" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Durata Evento (minuti) *</label>
+                                <input type="number" value={formData.durationMinutes} onChange={(e) => setFormData(prev => ({ ...prev, durationMinutes: parseInt(e.target.value) || 60 }))} min="15" step="15" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Modalità *</label>
+                                <div className="flex items-center gap-4">
+                                    <label className="flex items-center gap-2 text-sm">
+                                        <input
+                                            type="radio"
+                                            name="pollType"
+                                            value="fixed_slots"
+                                            checked={formData.pollType === 'fixed_slots'}
+                                            onChange={() => handlePollTypeChange('fixed_slots')}
+                                            className="text-indigo-600 focus:ring-indigo-500"
+                                        />
+                                        <span>Proponi Slot</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 text-sm">
+                                        <input
+                                            type="radio"
+                                            name="pollType"
+                                            value="open_availability"
+                                            checked={formData.pollType === 'open_availability'}
+                                            onChange={() => handlePollTypeChange('open_availability')}
+                                            className="text-indigo-600 focus:ring-indigo-500"
+                                        />
+                                        <span>Heatmap Disponibilità</span>
+                                    </label>
+                                </div>
+                            </div>
                         </div>
                         <div className="border-t pt-6">
                             <h3 className="text-lg font-semibold mb-4">Invita Partecipanti</h3>
@@ -1666,30 +1737,44 @@ function CreatePollModal({ allUsers, currentUser, onClose, onSuccess }: any) {
                             </div>
                         </div>
                         <div className="border-t pt-6">
-                            <h3 className="text-lg font-semibold mb-4">Slot Temporali Proposti</h3>
-                            <div className="grid grid-cols-2 gap-4 mb-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Data</label>
-                                    <input type="date" value={newSlotDate} onChange={(e) => setNewSlotDate(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Ora Inizio</label>
-                                    <input type="time" value={newSlotTime} onChange={(e) => setNewSlotTime(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
-                                </div>
-                            </div>
-                            <button type="button" onClick={addTimeSlot} className="mb-4 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
-                                <Plus className="w-4 h-4 inline mr-2" />Aggiungi Slot
-                            </button>
-                            {formData.timeSlots.length > 0 && (
-                                <div className="space-y-2">
-                                    {formData.timeSlots.map((slot, index) => (
-                                        <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                            <span className="text-sm">{new Date(slot.startTime).toLocaleString('it-IT')} - {new Date(slot.endTime).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</span>
-                                            <button type="button" onClick={() => removeTimeSlot(index)} className="p-1 text-red-600 hover:bg-red-50 rounded">
-                                                <X className="w-4 h-4" />
-                                            </button>
+                            {formData.pollType === 'fixed_slots' ? (
+                                <>
+                                    <h3 className="text-lg font-semibold mb-4">Slot Temporali Proposti</h3>
+                                    <div className="grid grid-cols-2 gap-4 mb-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Data</label>
+                                            <input type="date" value={newSlotDate} onChange={(e) => setNewSlotDate(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
                                         </div>
-                                    ))}
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Ora Inizio</label>
+                                            <input type="time" value={newSlotTime} onChange={(e) => setNewSlotTime(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
+                                        </div>
+                                    </div>
+                                    <button type="button" onClick={addTimeSlot} className="mb-4 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                                        <Plus className="w-4 h-4 inline mr-2" />Aggiungi Slot
+                                    </button>
+                                    {formData.timeSlots.length > 0 && (
+                                        <div className="space-y-2">
+                                            {formData.timeSlots.map((slot, index) => (
+                                                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                                    <span className="text-sm">{new Date(slot.startTime).toLocaleString('it-IT')} - {new Date(slot.endTime).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</span>
+                                                    <button type="button" onClick={() => removeTimeSlot(index)} className="p-1 text-red-600 hover:bg-red-50 rounded">
+                                                        <X className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-lg space-y-2">
+                                    <h3 className="text-lg font-semibold text-indigo-900">Modalità Heatmap</h3>
+                                    <p className="text-sm text-indigo-800">
+                                        Gli invitati potranno indicare gli slot disponibili colorando il calendario. Potrai vedere una heatmap aggregata e organizzare l'evento direttamente sullo slot con più consensi.
+                                    </p>
+                                    <p className="text-xs text-indigo-700">
+                                        Suggerimento: comunica nelle note del sondaggio (descrizione successiva) eventuali vincoli di giorni/ore da considerare.
+                                    </p>
                                 </div>
                             )}
                         </div>
@@ -1712,287 +1797,877 @@ function PollViewModal({ poll, currentUser, allClients, onClose, onSuccess }: an
     const [loading, setLoading] = useState(true);
     const [activeView, setActiveView] = useState<'vote' | 'results'>('vote');
     const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
+    const [availabilitySlots, setAvailabilitySlots] = useState<string[]>([]);
+    const [availabilityWeekStart, setAvailabilityWeekStart] = useState<Date>(getWeekStart(new Date()));
+    const [heatmapWeekStart, setHeatmapWeekStart] = useState<Date>(getWeekStart(new Date()));
+    const [heatmapData, setHeatmapData] = useState<HeatmapSlot[]>([]);
+    const [heatmapSelection, setHeatmapSelection] = useState<HeatmapSlot | null>(null);
+    const [heatmapLoading, setHeatmapLoading] = useState(false);
     const [voting, setVoting] = useState(false);
     const [organizingSlot, setOrganizingSlot] = useState<string | null>(null);
-    const [organizeFormData, setOrganizeFormData] = useState({
-        title: '',
-        description: '',
-        eventType: 'call' as 'call' | 'networking' | 'formazione' | 'generic',
-        eventSubtype: 'call_interna' as 'call_interna' | 'call_reparto' | 'call_clienti',
-        area: '',
-        clientId: '',
-        callLink: '',
-    });
+    const [organizingHeatmapSlot, setOrganizingHeatmapSlot] = useState<string | null>(null);
+    const [organizeLoading, setOrganizeLoading] = useState(false);
+    const [organizeFormData, setOrganizeFormData] = useState<OrganizeFormState>(() => createDefaultOrganizeForm(poll.title));
 
     const isCreator = poll.creatorUserId === currentUser?.id;
 
+    const loadPollDetails = useCallback(async () => {
+      try {
+        setLoading(true);
+        const data = await pollsAPI.getById(poll.id);
+        setPollData(data);
+
+        if (data.pollType === 'fixed_slots' && Array.isArray(data.slots)) {
+          const userVotes = data.slots
+            .filter((slot: any) => slot.votes?.some((v: any) => v.userId === currentUser?.id))
+            .map((slot: any) => slot.id);
+          setSelectedSlots(userVotes);
+          setAvailabilitySlots([]);
+        } else if (data.pollType === 'open_availability') {
+          const normalized = Array.isArray(data.myAvailabilitySlots)
+            ? data.myAvailabilitySlots
+                .map((slot: string) => new Date(slot).toISOString())
+                .sort()
+            : [];
+          setAvailabilitySlots(normalized);
+          if (normalized.length > 0) {
+            setAvailabilityWeekStart(getWeekStart(new Date(normalized[0])));
+          }
+          setSelectedSlots([]);
+        }
+      } catch (error) {
+        console.error('Errore caricamento dettagli sondaggio:', error);
+      } finally {
+        setLoading(false);
+      }
+    }, [poll.id, currentUser?.id]);
+
     useEffect(() => {
-        loadPollDetails();
+      loadPollDetails();
+    }, [loadPollDetails]);
+
+    const loadHeatmap = useCallback(async () => {
+      try {
+        setHeatmapLoading(true);
+        const data = await pollsAPI.heatmap(poll.id);
+        const slots: HeatmapSlot[] = data?.slots ?? [];
+        setHeatmapData(slots);
+        if (slots.length > 0) {
+          const earliest = [...slots]
+            .map(slot => new Date(slot.slotStartTime).toISOString())
+            .sort()[0];
+          if (earliest) {
+            setHeatmapWeekStart(getWeekStart(new Date(earliest)));
+          }
+        } else {
+          setHeatmapSelection(null);
+          setOrganizingHeatmapSlot(null);
+        }
+      } catch (error) {
+        console.error('Errore caricamento heatmap:', error);
+      } finally {
+        setHeatmapLoading(false);
+      }
     }, [poll.id]);
 
-    const loadPollDetails = async () => {
-        try {
-            setLoading(true);
-            const data = await pollsAPI.getById(poll.id);
-            setPollData(data);
-            if (data.slots) {
-                const userVotes = data.slots
-                    .filter((slot: any) => slot.votes?.some((v: any) => v.userId === currentUser?.id))
-                    .map((slot: any) => slot.id);
-                setSelectedSlots(userVotes);
-            }
-        } catch (error) {
-            console.error('Errore caricamento dettagli sondaggio:', error);
-        } finally {
-            setLoading(false);
-        }
+    useEffect(() => {
+      if (pollData?.pollType === 'open_availability' && activeView === 'results' && isCreator) {
+        loadHeatmap();
+      }
+    }, [pollData?.pollType, activeView, isCreator, loadHeatmap]);
+
+    useEffect(() => {
+      setOrganizeFormData(prev => ({ ...prev, title: poll.title || prev.title }));
+    }, [poll.title]);
+
+    const isFixedPoll = pollData?.pollType === 'fixed_slots';
+    const durationMinutes = pollData?.durationMinutes ?? poll.durationMinutes ?? 60;
+
+    const formatDateTime = (dateString: string) => {
+      const date = new Date(dateString);
+      return date.toLocaleString('it-IT', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
     };
 
-    const handleToggleSlot = (slotId: string) => {
-        setSelectedSlots(prev => 
-            prev.includes(slotId)
-                ? prev.filter(id => id !== slotId)
-                : [...prev, slotId]
-        );
+    const handleVoteFixed = async () => {
+      if (selectedSlots.length === 0) {
+        alert('Seleziona almeno uno slot');
+        return;
+      }
+      try {
+        setVoting(true);
+        await pollsAPI.vote(poll.id, selectedSlots);
+        await loadPollDetails();
+        alert('Voto registrato con successo!');
+      } catch (error: any) {
+        alert('Errore: ' + (error.message || 'Errore sconosciuto'));
+      } finally {
+        setVoting(false);
+      }
     };
 
-    const handleVote = async () => {
-        try {
-            setVoting(true);
-            await pollsAPI.vote(poll.id, selectedSlots);
-            await loadPollDetails();
-            alert('Voto registrato con successo!');
-        } catch (error: any) {
-            alert('Errore: ' + (error.message || 'Errore sconosciuto'));
-        } finally {
-            setVoting(false);
-        }
+    const handleSaveAvailability = async () => {
+      try {
+        setVoting(true);
+        await pollsAPI.submitAvailability(poll.id, availabilitySlots);
+        await loadPollDetails();
+        alert('Disponibilità registrate con successo!');
+      } catch (error: any) {
+        alert('Errore: ' + (error.message || 'Errore sconosciuto'));
+      } finally {
+        setVoting(false);
+      }
     };
 
-    const handleOrganize = async (slotId: string) => {
-        if (!organizeFormData.title.trim()) {
-            alert('Inserisci un titolo per l\'evento');
-            return;
+    const handleSelectHeatmapSlot = (slot: HeatmapSlot) => {
+      setOrganizingHeatmapSlot(slot.slotStartTime);
+      setHeatmapSelection(slot);
+      setOrganizingSlot(null);
+      setOrganizeFormData(createDefaultOrganizeForm(pollData?.title || poll.title));
+    };
+
+    const handleOrganize = async ({ slotId, slotStartTime }: { slotId?: string; slotStartTime?: string }) => {
+      if (!organizeFormData.title.trim()) {
+        alert('Inserisci un titolo per l\'evento');
+        return;
+      }
+
+      try {
+        setOrganizeLoading(true);
+        const payload: any = {
+          ...organizeFormData,
+          invitationRules: pollData?.invitationRules || poll.invitationRules || {},
+        };
+
+        if (pollData?.pollType === 'fixed_slots') {
+          payload.slotId = slotId;
+        } else {
+          payload.slotStartTime = slotStartTime;
         }
-        try {
-            setOrganizingSlot(slotId);
-            const eventData = { ...organizeFormData, invitationRules: pollData.invitationRules };
-            await pollsAPI.organize(poll.id, { ...eventData, slotId });
-            alert('Evento creato con successo!');
-            onSuccess();
-        } catch (error: any) {
-            alert('Errore: ' + (error.message || 'Errore sconosciuto'));
-        } finally {
-            setOrganizingSlot(null);
-        }
+
+        await pollsAPI.organize(poll.id, payload);
+        alert('Evento creato con successo!');
+        setOrganizeFormData(createDefaultOrganizeForm(poll.title));
+        setOrganizingSlot(null);
+        setOrganizingHeatmapSlot(null);
+        setHeatmapSelection(null);
+        onSuccess();
+      } catch (error: any) {
+        alert('Errore: ' + (error.message || 'Errore sconosciuto'));
+      } finally {
+        setOrganizeLoading(false);
+      }
     };
 
     if (loading || !pollData) {
-        return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                <div className="fixed inset-0 bg-black/50" onClick={onClose}></div>
-                <div className="relative bg-white rounded-lg shadow-xl w-full max-w-4xl p-6">
-                    <div className="text-center py-8">Caricamento...</div>
-                </div>
-            </div>
-        );
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/50" onClick={onClose}></div>
+          <div className="relative bg-white rounded-lg shadow-xl w-full max-w-4xl p-6">
+            <div className="text-center py-8">Caricamento...</div>
+          </div>
+        </div>
+      );
     }
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="fixed inset-0 bg-black/50" onClick={onClose}></div>
-            <div className="relative bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-                <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 z-10">
-                    <X className="w-6 h-6" />
-                </button>
-                <div className="p-6">
-                    <h2 className="text-2xl font-bold mb-4">{pollData.title}</h2>
-                    <div className="text-sm text-gray-600 mb-6">
-                        Durata prevista: {pollData.durationMinutes} minuti • Creato da: {pollData.creatorName}
-                    </div>
-                    <div className="flex gap-2 mb-6 border-b border-gray-200">
-                        <button
-                            onClick={() => setActiveView('vote')}
-                            className={`px-4 py-2 font-medium transition-colors ${
-                                activeView === 'vote' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-600 hover:text-gray-900'
-                            }`}
-                        >
-                            <CheckSquare className="w-4 h-4 inline mr-2" />Vota Disponibilità
-                        </button>
-                        {isCreator && (
-                            <button
-                                onClick={() => setActiveView('results')}
-                                className={`px-4 py-2 font-medium transition-colors ${
-                                    activeView === 'results' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-600 hover:text-gray-900'
-                                }`}
-                            >
-                                <BarChart3 className="w-4 h-4 inline mr-2" />Risultati
-                            </button>
-                        )}
-                    </div>
-
-                    {activeView === 'vote' && (
-                        <div>
-                            <h3 className="text-lg font-semibold mb-4">Seleziona gli slot per cui sei disponibile</h3>
-                            {pollData.slots && pollData.slots.length > 0 ? (
-                                <div className="space-y-3 mb-6">
-                                    {pollData.slots.map((slot: any) => (
-                                        <label
-                                            key={slot.id}
-                                            className={`flex items-center p-4 border-2 rounded-lg cursor-pointer transition-colors ${
-                                                selectedSlots.includes(slot.id) ? 'border-indigo-600 bg-indigo-50' : 'border-gray-200 hover:border-gray-300'
-                                            }`}
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedSlots.includes(slot.id)}
-                                                onChange={() => handleToggleSlot(slot.id)}
-                                                className="w-5 h-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                                            />
-                                            <div className="ml-4 flex-1">
-                                                <div className="font-medium text-gray-900">
-                                                    {new Date(slot.startTime).toLocaleString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
-                                                </div>
-                                                <div className="text-sm text-gray-600">
-                                                    Fino alle {new Date(slot.endTime).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
-                                                </div>
-                                                {slot.votes && slot.votes.length > 0 && (
-                                                    <div className="text-xs text-gray-500 mt-1">
-                                                        {slot.votes.length} {slot.votes.length === 1 ? 'persona disponibile' : 'persone disponibili'}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </label>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="text-center py-8 text-gray-500">Nessuno slot disponibile</div>
-                            )}
-                            <div className="flex justify-end gap-3 pt-4 border-t">
-                                <button onClick={onClose} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Chiudi</button>
-                                <button onClick={handleVote} disabled={voting || selectedSlots.length === 0} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50">
-                                    {voting ? 'Salvataggio...' : 'Salva Voto'}
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {activeView === 'results' && isCreator && (
-                        <div>
-                            <h3 className="text-lg font-semibold mb-4">Griglia Disponibilità</h3>
-                            {pollData.slots && pollData.slots.length > 0 ? (
-                                <div className="space-y-4">
-                                    {pollData.slots.map((slot: any) => {
-                                        const voters = slot.votes || [];
-                                        const votersCount = voters.length;
-                                        return (
-                                            <div key={slot.id} className="border border-gray-200 rounded-lg p-4">
-                                                <div className="flex items-start justify-between mb-4">
-                                                    <div>
-                                                        <div className="font-semibold text-gray-900">
-                                                            {new Date(slot.startTime).toLocaleString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
-                                                        </div>
-                                                        <div className="text-sm text-gray-600">
-                                                            Fino alle {new Date(slot.endTime).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
-                                                        </div>
-                                                    </div>
-                                                    <div className="text-right">
-                                                        <div className="text-2xl font-bold text-indigo-600">{votersCount}</div>
-                                                        <div className="text-xs text-gray-600">disponibili</div>
-                                                    </div>
-                                                </div>
-                                                {voters.length > 0 && (
-                                                    <div className="mb-4">
-                                                        <div className="text-sm font-medium text-gray-700 mb-2">Persone disponibili:</div>
-                                                        <div className="flex flex-wrap gap-2">
-                                                            {voters.map((vote: any) => (
-                                                                <span key={vote.id} className="px-2 py-1 bg-green-100 text-green-800 rounded text-sm">{vote.userName}</span>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                )}
-                                                <button
-                                                    onClick={() => setOrganizingSlot(organizingSlot === slot.id ? null : slot.id)}
-                                                    disabled={votersCount === 0 || organizingSlot !== null}
-                                                    className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                                >
-                                                    {organizingSlot === slot.id ? 'Annulla' : 'Organizza Evento per questo Slot'}
-                                                </button>
-                                                {organizingSlot === slot.id && (
-                                                    <div className="mt-4 p-4 bg-gray-50 rounded-lg space-y-4">
-                                                        <div>
-                                                            <label className="block text-sm font-medium text-gray-700 mb-1">Titolo Evento *</label>
-                                                            <input type="text" value={organizeFormData.title} onChange={(e) => setOrganizeFormData(prev => ({ ...prev, title: e.target.value }))} placeholder={pollData.title} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required />
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-sm font-medium text-gray-700 mb-1">Tipo Evento</label>
-                                                            <select value={organizeFormData.eventType} onChange={(e) => setOrganizeFormData(prev => ({ ...prev, eventType: e.target.value as any }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                                                                <option value="generic">📅 Evento Generico</option>
-                                                                <option value="call">📞 Call</option>
-                                                                <option value="formazione">🎓 Formazione</option>
-                                                                <option value="networking">🤝 Networking</option>
-                                                            </select>
-                                                        </div>
-                                                        {organizeFormData.eventType === 'call' && (
-                                                            <>
-                                                                <div>
-                                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Sottotipo Call</label>
-                                                                    <select value={organizeFormData.eventSubtype} onChange={(e) => setOrganizeFormData(prev => ({ ...prev, eventSubtype: e.target.value as any }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                                                                        <option value="call_interna">Call Interna</option>
-                                                                        <option value="call_reparto">Call di Reparto</option>
-                                                                        <option value="call_clienti">Call con Clienti</option>
-                                                                    </select>
-                                                                </div>
-                                                                {organizeFormData.eventSubtype === 'call_reparto' && (
-                                                                    <div>
-                                                                        <label className="block text-sm font-medium text-gray-700 mb-1">Area</label>
-                                                                        <select value={organizeFormData.area} onChange={(e) => setOrganizeFormData(prev => ({ ...prev, area: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                                                                            <option value="">Seleziona Area</option>
-                                                                            <option value="IT">IT</option>
-                                                                            <option value="Marketing">Marketing</option>
-                                                                            <option value="Commerciale">Commerciale</option>
-                                                                        </select>
-                                                                    </div>
-                                                                )}
-                                                                {organizeFormData.eventSubtype === 'call_clienti' && (
-                                                                    <div>
-                                                                        <label className="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
-                                                                        <select value={organizeFormData.clientId} onChange={(e) => setOrganizeFormData(prev => ({ ...prev, clientId: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                                                                            <option value="">Seleziona Cliente</option>
-                                                                            {allClients.map((client: any) => (
-                                                                                <option key={client.id} value={client.id}>{client.name}</option>
-                                                                            ))}
-                                                                        </select>
-                                                                    </div>
-                                                                )}
-                                                                <div>
-                                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Link per la Call</label>
-                                                                    <input type="url" value={organizeFormData.callLink} onChange={(e) => setOrganizeFormData(prev => ({ ...prev, callLink: e.target.value }))} placeholder="https://meet.google.com/xxx-xxxx-xxx" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
-                                                                </div>
-                                                            </>
-                                                        )}
-                                                        <div>
-                                                            <label className="block text-sm font-medium text-gray-700 mb-1">Descrizione (opzionale)</label>
-                                                            <textarea value={organizeFormData.description} onChange={(e) => setOrganizeFormData(prev => ({ ...prev, description: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" rows={3} />
-                                                        </div>
-                                                        <div className="flex gap-3">
-                                                            <button onClick={() => setOrganizingSlot(null)} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Annulla</button>
-                                                            <button onClick={() => handleOrganize(slot.id)} disabled={!organizeFormData.title.trim()} className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50">Crea Evento</button>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            ) : (
-                                <div className="text-center py-8 text-gray-500">Nessuno slot disponibile</div>
-                            )}
-                        </div>
-                    )}
-                </div>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/50" onClick={onClose}></div>
+        <div className="relative bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+          <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 z-10">
+            <X className="w-6 h-6" />
+          </button>
+          <div className="p-6">
+            <h2 className="text-2xl font-bold mb-4">{pollData.title}</h2>
+            <div className="text-sm text-gray-600 mb-6">
+              Durata prevista: {durationMinutes} minuti • Creato da: {pollData.creatorName}
             </div>
+            <div className="flex gap-2 mb-6 border-b border-gray-200">
+              <button
+                onClick={() => setActiveView('vote')}
+                className={cn(
+                  'px-4 py-2 font-medium transition-colors',
+                  activeView === 'vote' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-600 hover:text-gray-900'
+                )}
+              >
+                <CheckSquare className="w-4 h-4 inline mr-2" />Vota Disponibilità
+              </button>
+              {isCreator && (
+                <button
+                  onClick={() => setActiveView('results')}
+                  className={cn(
+                    'px-4 py-2 font-medium transition-colors',
+                    activeView === 'results' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-600 hover:text-gray-900'
+                  )}
+                >
+                  <BarChart3 className="w-4 h-4 inline mr-2" />Risultati
+                </button>
+              )}
+            </div>
+
+            {activeView === 'vote' && (
+              isFixedPoll ? (
+                <div>
+                  <h3 className="text-lg font-semibold mb-4">Seleziona gli slot per cui sei disponibile</h3>
+                  {pollData.slots && pollData.slots.length > 0 ? (
+                    <div className="space-y-3 mb-6">
+                      {pollData.slots.map((slot: any) => (
+                        <label
+                          key={slot.id}
+                          className={cn(
+                            'flex items-center p-4 border-2 rounded-lg cursor-pointer transition-colors',
+                            selectedSlots.includes(slot.id)
+                              ? 'border-indigo-600 bg-indigo-50'
+                              : 'border-gray-200 hover:border-gray-300'
+                          )}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedSlots.includes(slot.id)}
+                            onChange={() => {
+                              setSelectedSlots(prev =>
+                                prev.includes(slot.id)
+                                  ? prev.filter(id => id !== slot.id)
+                                  : [...prev, slot.id]
+                              );
+                            }}
+                            className="w-5 h-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                          />
+                          <div className="ml-4 flex-1">
+                            <div className="font-medium text-gray-900">
+                              {new Date(slot.startTime).toLocaleString('it-IT', {
+                                weekday: 'long',
+                                day: 'numeric',
+                                month: 'long',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </div>
+                            <div className="text-sm text-gray-600">
+                              Fino alle {new Date(slot.endTime).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                            {slot.votes && slot.votes.length > 0 && (
+                              <div className="text-xs text-gray-500 mt-1">
+                                {slot.votes.length} {slot.votes.length === 1 ? 'persona disponibile' : 'persone disponibili'}
+                              </div>
+                            )}
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">Nessuno slot disponibile</div>
+                  )}
+                  <div className="flex justify-end gap-3 pt-4 border-t">
+                    <button onClick={onClose} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                      Chiudi
+                    </button>
+                    <button
+                      onClick={handleVoteFixed}
+                      disabled={voting || selectedSlots.length === 0}
+                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                    >
+                      {voting ? 'Salvataggio...' : 'Salva Voto'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-600">
+                    Seleziona tutti gli slot in cui sei disponibile. Puoi navigare tra le settimane per indicare disponibilità future.
+                  </p>
+                  <AvailabilitySelector
+                    durationMinutes={durationMinutes}
+                    selectedSlots={availabilitySlots}
+                    onChange={setAvailabilitySlots}
+                    weekStart={availabilityWeekStart}
+                    onWeekChange={setAvailabilityWeekStart}
+                  />
+                  <div className="flex justify-end gap-3 pt-4 border-t">
+                    <button onClick={onClose} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                      Chiudi
+                    </button>
+                    <button
+                      onClick={handleSaveAvailability}
+                      disabled={voting}
+                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                    >
+                      {voting ? 'Salvataggio...' : 'Salva disponibilità'}
+                    </button>
+                  </div>
+                </div>
+              )
+            )}
+
+            {activeView === 'results' && (
+              !isCreator ? (
+                <div className="text-sm text-gray-500">Solo il creatore del sondaggio può visualizzare i risultati.</div>
+              ) : isFixedPoll ? (
+                <div>
+                  <h3 className="text-lg font-semibold mb-4">Griglia Disponibilità</h3>
+                  {pollData.slots && pollData.slots.length > 0 ? (
+                    <div className="space-y-4">
+                      {pollData.slots.map((slot: any) => {
+                        const voters = slot.votes || [];
+                        const votersCount = voters.length;
+                        return (
+                          <div key={slot.id} className="border border-gray-200 rounded-lg p-4">
+                            <div className="flex items-start justify-between mb-4">
+                              <div>
+                                <div className="font-semibold text-gray-900">
+                                  {new Date(slot.startTime).toLocaleString('it-IT', {
+                                    weekday: 'long',
+                                    day: 'numeric',
+                                    month: 'long',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  })}
+                                </div>
+                                <div className="text-sm text-gray-600">
+                                  Fino alle {new Date(slot.endTime).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-2xl font-bold text-indigo-600">{votersCount}</div>
+                                <div className="text-xs text-gray-600">disponibili</div>
+                              </div>
+                            </div>
+                            {voters.length > 0 && (
+                              <div className="mb-4">
+                                <div className="text-sm font-medium text-gray-700 mb-2">Persone disponibili:</div>
+                                <div className="flex flex-wrap gap-2">
+                                  {voters.map((vote: any) => (
+                                    <span key={vote.id} className="px-2 py-1 bg-green-100 text-green-800 rounded text-sm">{vote.userName}</span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (organizingSlot === slot.id) {
+                                  setOrganizingSlot(null);
+                                } else {
+                                  setOrganizingSlot(slot.id);
+                                  setOrganizingHeatmapSlot(null);
+                                  setHeatmapSelection(null);
+                                  setOrganizeFormData(createDefaultOrganizeForm(pollData.title));
+                                }
+                              }}
+                              disabled={votersCount === 0}
+                              className={cn(
+                                'w-full px-4 py-2 bg-purple-600 text-white rounded-lg transition-colors',
+                                votersCount === 0
+                                  ? 'opacity-60 cursor-not-allowed'
+                                  : 'hover:bg-purple-700'
+                              )}
+                            >
+                              {organizingSlot === slot.id ? 'Chiudi form' : 'Organizza Evento per questo Slot'}
+                            </button>
+                            {organizingSlot === slot.id && (
+                              <EventOrganizeForm
+                                formData={organizeFormData}
+                                setFormData={setOrganizeFormData}
+                                allClients={allClients}
+                                onCancel={() => setOrganizingSlot(null)}
+                                onSubmit={() => handleOrganize({ slotId: slot.id })}
+                                submitting={organizeLoading}
+                                submitLabel="Crea Evento"
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">Nessuno slot disponibile</div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <HeatmapGrid
+                    durationMinutes={durationMinutes}
+                    data={heatmapData}
+                    weekStart={heatmapWeekStart}
+                    onWeekChange={setHeatmapWeekStart}
+                    loading={heatmapLoading}
+                    selectedSlot={organizingHeatmapSlot}
+                    onSelectSlot={handleSelectHeatmapSlot}
+                  />
+                  {heatmapSelection ? (
+                    <div className="border border-indigo-200 rounded-lg p-4 bg-indigo-50 space-y-4">
+                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                        <div>
+                          <div className="text-sm font-semibold text-indigo-900">Slot selezionato</div>
+                          <div className="text-sm text-indigo-800">
+                            {formatDateTime(heatmapSelection.slotStartTime)} • Durata {durationMinutes} minuti
+                          </div>
+                          <div className="text-xs text-indigo-700">
+                            {heatmapSelection.availableUsers} persone disponibili
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOrganizingHeatmapSlot(null);
+                            setHeatmapSelection(null);
+                          }}
+                          className="self-start px-3 py-1 text-xs font-medium bg-white text-indigo-600 border border-indigo-200 rounded hover:bg-indigo-100"
+                        >
+                          Annulla selezione
+                        </button>
+                      </div>
+                      {heatmapSelection.users?.length > 0 && (
+                        <div>
+                          <div className="text-xs font-medium text-indigo-900 mb-2 uppercase tracking-wide">Disponibili</div>
+                          <div className="flex flex-wrap gap-2">
+                            {heatmapSelection.users.map(user => (
+                              <span key={user.userId} className="px-2 py-1 text-xs bg-white border border-indigo-200 rounded text-indigo-700">
+                                {user.userName}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      <EventOrganizeForm
+                        formData={organizeFormData}
+                        setFormData={setOrganizeFormData}
+                        allClients={allClients}
+                        onCancel={() => {
+                          setOrganizingHeatmapSlot(null);
+                          setHeatmapSelection(null);
+                        }}
+                        onSubmit={() => handleOrganize({ slotStartTime: heatmapSelection.slotStartTime })}
+                        submitting={organizeLoading}
+                        submitLabel="Crea Evento"
+                      />
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-500">Seleziona uno slot dalla heatmap per organizzare l'evento.</p>
+                  )}
+                </div>
+              )
+            )}
+          </div>
         </div>
+      </div>
     );
-}
+  }
+
+  function AvailabilitySelector({ durationMinutes, selectedSlots, onChange, weekStart, onWeekChange }: AvailabilitySelectorProps) {
+    const weekGrid = useMemo(() => generateWeekSlots(weekStart, durationMinutes), [weekStart, durationMinutes]);
+    const timeSlots = weekGrid[0]?.slots ?? [];
+    const now = Date.now();
+
+    const toggleSlot = (iso: string) => {
+      let updated: string[];
+      if (selectedSlots.includes(iso)) {
+        updated = selectedSlots.filter(slot => slot !== iso);
+      } else {
+        updated = [...selectedSlots, iso];
+      }
+      updated.sort();
+      onChange(updated);
+    };
+
+    const handlePrevWeek = () => onWeekChange(addDays(weekStart, -7));
+    const handleNextWeek = () => onWeekChange(addDays(weekStart, 7));
+
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between text-sm">
+          <button
+            type="button"
+            onClick={handlePrevWeek}
+            className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50"
+          >
+            <ChevronLeft className="w-4 h-4" /> Settimana precedente
+          </button>
+          <span className="font-semibold text-sm sm:text-base">{formatWeekRange(weekStart)}</span>
+          <button
+            type="button"
+            onClick={handleNextWeek}
+            className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50"
+          >
+            Prossima settimana <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="overflow-x-auto">
+          <div className="grid grid-cols-8 gap-px bg-gray-200 rounded-lg overflow-hidden text-xs sm:text-sm min-w-[720px]">
+            <div className="bg-white font-semibold p-2 text-center">Orario</div>
+            {weekGrid.map(day => (
+              <div key={day.day.toISOString()} className="bg-white font-semibold p-2 text-center capitalize">
+                {formatDayLabel(day.day)}
+              </div>
+            ))}
+            {timeSlots.map((slotTime, rowIndex) => (
+              <React.Fragment key={slotTime.toISOString()}>
+                <div className="bg-white p-2 font-medium text-center">{formatTimeLabel(slotTime)}</div>
+                {weekGrid.map(day => {
+                  const slot = day.slots[rowIndex];
+                  if (!slot) {
+                    return <div key={`${day.day.toISOString()}-${rowIndex}`} className="bg-gray-50" />;
+                  }
+                  const iso = slot.toISOString();
+                  const isSelected = selectedSlots.includes(iso);
+                  const isPast = slot.getTime() < now;
+                  return (
+                    <button
+                      key={`${day.day.toISOString()}-${rowIndex}`}
+                      type="button"
+                      onClick={() => !isPast && toggleSlot(iso)}
+                      disabled={isPast}
+                      className={cn(
+                        'h-12 w-full flex items-center justify-center text-xs sm:text-sm transition-colors',
+                        isPast
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : isSelected
+                            ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                            : 'bg-white hover:bg-indigo-50',
+                        'focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500'
+                      )}
+                      title={isPast ? 'Slot scaduto' : isSelected ? 'Slot selezionato' : 'Indica disponibilità'}
+                    >
+                      {isSelected ? '✔' : ''}
+                    </button>
+                  );
+                })}
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function HeatmapGrid({ durationMinutes, data, weekStart, onWeekChange, loading, selectedSlot, onSelectSlot }: HeatmapGridProps) {
+    const weekGrid = useMemo(() => generateWeekSlots(weekStart, durationMinutes), [weekStart, durationMinutes]);
+    const timeSlots = weekGrid[0]?.slots ?? [];
+    const dataMap = useMemo(() => {
+      const map = new Map<string, HeatmapSlot>();
+      data.forEach(slot => {
+        const iso = new Date(slot.slotStartTime).toISOString();
+        map.set(iso, slot);
+      });
+      return map;
+    }, [data]);
+    const maxCount = useMemo(() => data.reduce((max, slot) => Math.max(max, slot.availableUsers ?? 0), 0), [data]);
+
+    const handlePrevWeek = () => onWeekChange(addDays(weekStart, -7));
+    const handleNextWeek = () => onWeekChange(addDays(weekStart, 7));
+
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between text-sm">
+          <button
+            type="button"
+            onClick={handlePrevWeek}
+            className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50"
+          >
+            <ChevronLeft className="w-4 h-4" /> Settimana precedente
+          </button>
+          <span className="font-semibold text-sm sm:text-base">{formatWeekRange(weekStart)}</span>
+          <button
+            type="button"
+            onClick={handleNextWeek}
+            className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50"
+          >
+            Prossima settimana <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+        {loading ? (
+          <div className="text-center py-6 text-sm text-gray-500">Caricamento heatmap...</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <div className="grid grid-cols-8 gap-px bg-gray-200 rounded-lg overflow-hidden text-xs sm:text-sm min-w-[720px]">
+              <div className="bg-white font-semibold p-2 text-center">Orario</div>
+              {weekGrid.map(day => (
+                <div key={day.day.toISOString()} className="bg-white font-semibold p-2 text-center capitalize">
+                  {formatDayLabel(day.day)}
+                </div>
+              ))}
+              {timeSlots.map((slotTime, rowIndex) => (
+                <React.Fragment key={slotTime.toISOString()}>
+                  <div className="bg-white p-2 font-medium text-center">{formatTimeLabel(slotTime)}</div>
+                  {weekGrid.map(day => {
+                    const slot = day.slots[rowIndex];
+                    if (!slot) {
+                      return <div key={`${day.day.toISOString()}-${rowIndex}`} className="bg-gray-50" />;
+                    }
+                    const iso = slot.toISOString();
+                    const slotInfo = dataMap.get(iso);
+                    const count = slotInfo?.availableUsers ?? 0;
+                    const disabled = !slotInfo || count === 0;
+                    return (
+                      <button
+                        key={`${day.day.toISOString()}-${rowIndex}`}
+                        type="button"
+                        disabled={disabled}
+                        onClick={() => slotInfo && onSelectSlot(slotInfo)}
+                        className={cn(
+                          'h-12 w-full flex flex-col items-center justify-center text-xs sm:text-sm transition-colors px-2 text-center',
+                          getHeatmapColorClass(count, maxCount),
+                          disabled ? 'cursor-not-allowed' : 'cursor-pointer hover:brightness-95',
+                          selectedSlot === iso && 'ring-2 ring-purple-500 ring-offset-2'
+                        )}
+                        title={slotInfo?.users?.map(user => user.userName).join(', ') || 'Nessuna disponibilità registrata'}
+                      >
+                        <span className="font-semibold">{count > 0 ? count : '-'}</span>
+                        <span className="text-[10px] sm:text-xs uppercase tracking-wide">Disponibili</span>
+                      </button>
+                    );
+                  })}
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+        )}
+        <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
+          <div className="flex items-center gap-1">
+            <span className="inline-flex h-3 w-3 rounded-full bg-white border border-gray-300" /> 0
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="inline-flex h-3 w-3 rounded-full bg-emerald-100" /> Basso
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="inline-flex h-3 w-3 rounded-full bg-emerald-300" /> Medio
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="inline-flex h-3 w-3 rounded-full bg-emerald-500" /> Alto
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="inline-flex h-3 w-3 rounded-full bg-emerald-600" /> Massimo consenso
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function EventOrganizeForm({ formData, setFormData, allClients, onCancel, onSubmit, submitting, submitLabel }: EventOrganizeFormProps) {
+    return (
+      <div className="mt-4 p-4 bg-gray-50 rounded-lg space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Titolo Evento *</label>
+          <input
+            type="text"
+            value={formData.title}
+            onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+            placeholder="Titolo dell'evento"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Tipo Evento</label>
+          <select
+            value={formData.eventType}
+            onChange={(e) => {
+              const value = e.target.value as OrganizeFormState['eventType'];
+              setFormData(prev => ({
+                ...prev,
+                eventType: value,
+                eventSubtype: value === 'call' ? prev.eventSubtype : 'call_interna',
+                area: value === 'call' ? prev.area : '',
+                clientId: value === 'call' ? prev.clientId : '',
+                callLink: value === 'call' ? prev.callLink : '',
+              }));
+            }}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+          >
+            <option value="generic">📅 Evento Generico</option>
+            <option value="call">📞 Call</option>
+            <option value="formazione">🎓 Formazione</option>
+            <option value="networking">🤝 Networking</option>
+          </select>
+        </div>
+        {formData.eventType === 'call' && (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Sottotipo Call</label>
+              <select
+                value={formData.eventSubtype}
+                onChange={(e) => {
+                  const value = e.target.value as OrganizeFormState['eventSubtype'];
+                  setFormData(prev => ({
+                    ...prev,
+                    eventSubtype: value,
+                    area: value === 'call_reparto' ? prev.area : '',
+                    clientId: value === 'call_clienti' ? prev.clientId : '',
+                  }));
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              >
+                <option value="call_interna">Call Interna</option>
+                <option value="call_reparto">Call di Reparto</option>
+                <option value="call_clienti">Call con Clienti</option>
+              </select>
+            </div>
+            {formData.eventSubtype === 'call_reparto' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Area</label>
+                <select
+                  value={formData.area}
+                  onChange={(e) => setFormData(prev => ({ ...prev, area: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                  <option value="">Seleziona Area</option>
+                  <option value="IT">IT</option>
+                  <option value="Marketing">Marketing</option>
+                  <option value="Commerciale">Commerciale</option>
+                </select>
+              </div>
+            )}
+            {formData.eventSubtype === 'call_clienti' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
+                <select
+                  value={formData.clientId}
+                  onChange={(e) => setFormData(prev => ({ ...prev, clientId: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                  <option value="">Seleziona Cliente</option>
+                  {allClients.map((client: any) => (
+                    <option key={client.id} value={client.id}>{client.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Link per la Call</label>
+              <input
+                type="url"
+                value={formData.callLink}
+                onChange={(e) => setFormData(prev => ({ ...prev, callLink: e.target.value }))}
+                placeholder="https://meet.google.com/xxx-xxxx-xxx"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+            </div>
+          </>
+        )}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Descrizione (opzionale)</label>
+          <textarea
+            value={formData.description}
+            onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            rows={3}
+          />
+        </div>
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            Annulla
+          </button>
+          <button
+            type="button"
+            onClick={onSubmit}
+            disabled={submitting || !formData.title.trim()}
+            className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
+          >
+            {submitting ? 'Creazione...' : submitLabel}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const AVAILABILITY_HOURS = { start: 8, end: 20 };
+
+  function createDefaultOrganizeForm(defaultTitle?: string): OrganizeFormState {
+    return {
+      title: defaultTitle || '',
+      description: '',
+      eventType: 'call',
+      eventSubtype: 'call_interna',
+      area: '',
+      clientId: '',
+      callLink: '',
+    };
+  }
+
+  function getWeekStart(date: Date): Date {
+    const result = new Date(date);
+    const day = result.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    result.setDate(result.getDate() + diff);
+    result.setHours(0, 0, 0, 0);
+    return result;
+  }
+
+  function addDays(date: Date, amount: number): Date {
+    const result = new Date(date);
+    result.setDate(result.getDate() + amount);
+    return result;
+  }
+
+  function formatWeekRange(weekStart: Date): string {
+    const end = addDays(weekStart, 6);
+    return `${weekStart.toLocaleDateString('it-IT', { day: '2-digit', month: 'short' })} - ${end.toLocaleDateString('it-IT', { day: '2-digit', month: 'short' })}`;
+  }
+
+  function formatDayLabel(date: Date): string {
+    return date.toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit', month: '2-digit' });
+  }
+
+  function formatTimeLabel(date: Date): string {
+    return date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function generateWeekSlots(weekStart: Date, durationMinutes: number): WeekDaySlots[] {
+    const days: WeekDaySlots[] = [];
+    for (let i = 0; i < 7; i++) {
+      const dayDate = addDays(weekStart, i);
+      const daySlots: Date[] = [];
+      let slotPointer = new Date(dayDate);
+      slotPointer.setHours(AVAILABILITY_HOURS.start, 0, 0, 0);
+
+      while (true) {
+        const slotStart = new Date(slotPointer);
+        const slotEnd = new Date(slotStart.getTime() + durationMinutes * 60000);
+
+        if (slotEnd.getDate() !== dayDate.getDate()) {
+          break;
+        }
+        if (
+          slotEnd.getHours() > AVAILABILITY_HOURS.end ||
+          (slotEnd.getHours() === AVAILABILITY_HOURS.end && slotEnd.getMinutes() > 0)
+        ) {
+          break;
+        }
+
+        daySlots.push(slotStart);
+        slotPointer = new Date(slotPointer.getTime() + durationMinutes * 60000);
+
+        if (slotPointer.getDate() !== dayDate.getDate()) {
+          break;
+        }
+      }
+
+      days.push({ day: dayDate, slots: daySlots });
+    }
+    return days;
+  }
+
+  function getHeatmapColorClass(count: number, max: number): string {
+    if (count === 0) {
+      return 'bg-white text-gray-400';
+    }
+    if (max <= 1) {
+      return 'bg-emerald-200 text-emerald-900';
+    }
+    const ratio = count / max;
+    if (ratio > 0.75) return 'bg-emerald-600 text-white';
+    if (ratio > 0.5) return 'bg-emerald-500 text-white';
+    if (ratio > 0.25) return 'bg-emerald-300 text-emerald-900';
+    return 'bg-emerald-100 text-emerald-900';
+  }
 

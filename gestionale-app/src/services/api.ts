@@ -400,6 +400,12 @@ export const pollsAPI = {
             method: 'POST',
             body: JSON.stringify({ slotIds }),
         }),
+    submitAvailability: (id: string, slots: string[]) =>
+        apiCall(`/api/polls/${id}/availability`, {
+            method: 'POST',
+            body: JSON.stringify({ slots }),
+        }),
+    heatmap: (id: string) => apiCall(`/api/polls/${id}/heatmap`),
     organize: (id: string, data: any) =>
         apiCall(`/api/polls/${id}/organize`, {
             method: 'POST',

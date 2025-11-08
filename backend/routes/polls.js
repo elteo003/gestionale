@@ -66,6 +66,7 @@ router.get('/', async (req, res) => {
                    p.final_event_id as "finalEventId",
                    p.candidate_id as "candidateId",
                    p.created_at as "createdAt",
+                   p.poll_type as "pollType",
                    u.name as "creatorName", u.email as "creatorEmail",
                    p.creator_user_id as "creatorUserId",
                    c.name as "candidateName", c.email as "candidateEmail"
@@ -104,13 +105,13 @@ router.get('/:id', async (req, res) => {
     try {
         const { id } = req.params;
 
-        // Recupera il sondaggio
         const pollResult = await pool.query(
             `SELECT p.poll_id as id, p.title, p.duration_minutes as "durationMinutes",
                     p.invitation_rules as "invitationRules", p.status,
                     p.final_event_id as "finalEventId",
                     p.candidate_id as "candidateId",
                     p.created_at as "createdAt",
+                    p.poll_type as "pollType",
                     u.name as "creatorName", u.email as "creatorEmail",
                     p.creator_user_id as "creatorUserId",
                     c.name as "candidateName", c.email as "candidateEmail"
@@ -127,51 +128,74 @@ router.get('/:id', async (req, res) => {
 
         const poll = pollResult.rows[0];
 
-        // Recupera gli slot temporali
-        const slotsResult = await pool.query(
-            `SELECT slot_id as id, poll_id as "pollId",
-                    start_time as "startTime", end_time as "endTime",
-                    created_at as "createdAt"
-             FROM poll_time_slots
-             WHERE poll_id = $1
-             ORDER BY start_time ASC`,
-            [id]
-        );
+        if (poll.pollType === 'fixed_slots') {
+            const slotsResult = await pool.query(
+                `SELECT slot_id as id, poll_id as "pollId",
+                        start_time as "startTime", end_time as "endTime",
+                        created_at as "createdAt"
+                 FROM poll_time_slots
+                 WHERE poll_id = $1
+                 ORDER BY start_time ASC`,
+                [id]
+            );
 
-        // Recupera i voti per ogni slot
-        const votesResult = await pool.query(
-            `SELECT v.vote_id as id, v.slot_id as "slotId", v.user_id as "userId",
-                    u.name as "userName", u.email as "userEmail"
-             FROM poll_votes v
-             JOIN users u ON v.user_id = u.user_id
-             WHERE v.slot_id IN (
-                 SELECT slot_id FROM poll_time_slots WHERE poll_id = $1
-             )
-             ORDER BY v.slot_id, u.name`,
-            [id]
-        );
+            const votesResult = await pool.query(
+                `SELECT v.vote_id as id, v.slot_id as "slotId", v.user_id as "userId",
+                        u.name as "userName", u.email as "userEmail"
+                 FROM poll_votes v
+                 JOIN users u ON v.user_id = u.user_id
+                 WHERE v.slot_id IN (
+                     SELECT slot_id FROM poll_time_slots WHERE poll_id = $1
+                 )
+                 ORDER BY v.slot_id, u.name`,
+                [id]
+            );
 
-        // Organizza i voti per slot
-        const votesBySlot = {};
-        votesResult.rows.forEach(vote => {
-            if (!votesBySlot[vote.slotId]) {
-                votesBySlot[vote.slotId] = [];
-            }
-            votesBySlot[vote.slotId].push({
-                id: vote.id,
-                userId: vote.userId,
-                userName: vote.userName,
-                userEmail: vote.userEmail
+            const votesBySlot = {};
+            votesResult.rows.forEach(vote => {
+                if (!votesBySlot[vote.slotId]) {
+                    votesBySlot[vote.slotId] = [];
+                }
+                votesBySlot[vote.slotId].push({
+                    id: vote.id,
+                    userId: vote.userId,
+                    userName: vote.userName,
+                    userEmail: vote.userEmail
+                });
             });
+
+            const slots = slotsResult.rows.map(slot => ({
+                ...slot,
+                votes: votesBySlot[slot.id] || []
+            }));
+
+            return res.json({ ...poll, slots });
+        }
+
+        const myAvailabilityResult = await pool.query(
+            `SELECT slot_start_time
+             FROM open_availability_votes
+             WHERE poll_id = $1 AND user_id = $2
+             ORDER BY slot_start_time ASC`,
+            [id, req.user.userId]
+        );
+
+        const availabilitySummaryResult = await pool.query(
+            `SELECT slot_start_time as "slotStartTime",
+                    COUNT(*)::int as "count"
+             FROM open_availability_votes
+             WHERE poll_id = $1
+             GROUP BY slot_start_time
+             ORDER BY slot_start_time ASC`,
+            [id]
+        );
+
+        return res.json({
+            ...poll,
+            slots: [],
+            myAvailabilitySlots: myAvailabilityResult.rows.map(row => row.slot_start_time),
+            availabilitySummary: availabilitySummaryResult.rows,
         });
-
-        // Aggiungi i voti agli slot
-        const slots = slotsResult.rows.map(slot => ({
-            ...slot,
-            votes: votesBySlot[slot.id] || []
-        }));
-
-        res.json({ ...poll, slots });
     } catch (error) {
         console.error('Errore recupero sondaggio:', error);
         res.status(500).json({ error: 'Errore interno del server' });
@@ -184,16 +208,25 @@ router.post('/', async (req, res) => {
     try {
         await client.query('BEGIN');
 
-        const { title, durationMinutes, invitationRules, timeSlots, candidateId } = req.body;
+        const { title, durationMinutes, invitationRules, timeSlots, candidateId, pollType } = req.body;
+        const normalizedPollType = pollType === 'open_availability' ? 'open_availability' : 'fixed_slots';
 
-        if (!title || !durationMinutes || !invitationRules || !timeSlots || !Array.isArray(timeSlots) || timeSlots.length === 0) {
+        if (!title || !durationMinutes || !invitationRules) {
             await client.query('ROLLBACK');
-            return res.status(400).json({ 
-                error: 'Titolo, durata, regole di invito e almeno uno slot temporale sono obbligatori' 
+            return res.status(400).json({
+                error: 'Titolo, durata e regole di invito sono obbligatori'
             });
         }
 
-        // Se candidateId è fornito, verifica che esista
+        if (normalizedPollType === 'fixed_slots') {
+            if (!timeSlots || !Array.isArray(timeSlots) || timeSlots.length === 0) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({
+                    error: 'Per i sondaggi a slot fissi è necessario fornire almeno uno slot temporale'
+                });
+            }
+        }
+
         if (candidateId) {
             const candidateCheck = await client.query(
                 'SELECT candidate_id FROM candidates WHERE candidate_id = $1',
@@ -205,8 +238,7 @@ router.post('/', async (req, res) => {
             }
         }
 
-        // Verifica permessi: solo Manager, CDA, Admin, Responsabile, Presidente
-        const canCreatePoll = 
+        const canCreatePoll =
             req.user.role === 'Manager' ||
             req.user.role === 'CDA' ||
             req.user.role === 'Admin' ||
@@ -215,45 +247,54 @@ router.post('/', async (req, res) => {
 
         if (!canCreatePoll) {
             await client.query('ROLLBACK');
-            return res.status(403).json({ 
-                error: 'Non hai i permessi per creare sondaggi' 
+            return res.status(403).json({
+                error: 'Non hai i permessi per creare sondaggi'
             });
         }
 
-        // Crea il sondaggio
         const pollResult = await client.query(
-            `INSERT INTO scheduling_polls (title, duration_minutes, invitation_rules, creator_user_id, candidate_id)
-             VALUES ($1, $2, $3, $4, $5)
+            `INSERT INTO scheduling_polls (title, duration_minutes, invitation_rules, creator_user_id, candidate_id, poll_type)
+             VALUES ($1, $2, $3, $4, $5, $6)
              RETURNING poll_id as id, title, duration_minutes as "durationMinutes",
                        invitation_rules as "invitationRules", status,
                        candidate_id as "candidateId",
+                       poll_type as "pollType",
                        created_at as "createdAt"`,
-            [title, durationMinutes, JSON.stringify(invitationRules), req.user.userId, candidateId || null]
+            [title, durationMinutes, JSON.stringify(invitationRules), req.user.userId, candidateId || null, normalizedPollType]
         );
 
         const poll = pollResult.rows[0];
 
-        // Crea gli slot temporali
-        const slotValues = timeSlots.map((slot, index) => {
-            const baseIndex = index * 3;
-            return `($${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3})`;
-        }).join(', ');
+        if (normalizedPollType === 'fixed_slots') {
+            const safeTimeSlots = Array.isArray(timeSlots) ? timeSlots : [];
+            if (safeTimeSlots.length === 0) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({
+                    error: 'Per i sondaggi a slot fissi è necessario almeno uno slot'
+                });
+            }
 
-        const slotParams = timeSlots.flatMap(slot => [poll.id, slot.startTime, slot.endTime]);
+            const slotValues = safeTimeSlots.map((slot, index) => {
+                const baseIndex = index * 3;
+                return `($${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3})`;
+            }).join(', ');
 
-        await client.query(
-            `INSERT INTO poll_time_slots (poll_id, start_time, end_time)
-             VALUES ${slotValues}`,
-            slotParams
-        );
+            const slotParams = safeTimeSlots.flatMap(slot => [poll.id, slot.startTime, slot.endTime]);
+
+            await client.query(
+                `INSERT INTO poll_time_slots (poll_id, start_time, end_time)
+                 VALUES ${slotValues}`,
+                slotParams
+            );
+        }
 
         await client.query('COMMIT');
 
-        // Recupera il sondaggio completo con slot
         const fullPollResult = await pool.query(
             `SELECT p.poll_id as id, p.title, p.duration_minutes as "durationMinutes",
                     p.invitation_rules as "invitationRules", p.status,
                     p.candidate_id as "candidateId",
+                    p.poll_type as "pollType",
                     p.created_at as "createdAt",
                     u.name as "creatorName", u.email as "creatorEmail",
                     p.creator_user_id as "creatorUserId",
@@ -265,18 +306,29 @@ router.post('/', async (req, res) => {
             [poll.id]
         );
 
-        const slotsResult = await pool.query(
-            `SELECT slot_id as id, poll_id as "pollId",
-                    start_time as "startTime", end_time as "endTime"
-             FROM poll_time_slots
-             WHERE poll_id = $1
-             ORDER BY start_time ASC`,
-            [poll.id]
-        );
+        const responsePayload = fullPollResult.rows[0];
 
-        res.status(201).json({ 
-            ...fullPollResult.rows[0], 
-            slots: slotsResult.rows 
+        if (normalizedPollType === 'fixed_slots') {
+            const slotsResult = await pool.query(
+                `SELECT slot_id as id, poll_id as "pollId",
+                        start_time as "startTime", end_time as "endTime"
+                 FROM poll_time_slots
+                 WHERE poll_id = $1
+                 ORDER BY start_time ASC`,
+                [poll.id]
+            );
+
+            return res.status(201).json({
+                ...responsePayload,
+                slots: slotsResult.rows
+            });
+        }
+
+        return res.status(201).json({
+            ...responsePayload,
+            slots: [],
+            myAvailabilitySlots: [],
+            availabilitySummary: [],
         });
     } catch (error) {
         await client.query('ROLLBACK');
@@ -303,7 +355,7 @@ router.post('/:id/vote', async (req, res) => {
 
         // Verifica che il sondaggio esista e sia aperto
         const pollCheck = await pool.query(
-            'SELECT status FROM scheduling_polls WHERE poll_id = $1',
+            'SELECT status, poll_type FROM scheduling_polls WHERE poll_id = $1',
             [id]
         );
 
@@ -315,6 +367,11 @@ router.post('/:id/vote', async (req, res) => {
         if (pollCheck.rows[0].status !== 'open') {
             await client.query('ROLLBACK');
             return res.status(400).json({ error: 'Il sondaggio è chiuso' });
+        }
+
+        if (pollCheck.rows[0].poll_type !== 'fixed_slots') {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: 'Questo sondaggio non utilizza la votazione a slot fissi' });
         }
 
         // Verifica che gli slot appartengano al sondaggio
@@ -377,19 +434,19 @@ router.post('/:id/organize', async (req, res) => {
         await client.query('BEGIN');
 
         const { id } = req.params;
-        const { 
+        const {
             title, description, eventType, eventSubtype, area, clientId,
-            callLink, invitationRules, slotId 
+            callLink, invitationRules, slotId, slotStartTime
         } = req.body;
 
-        if (!title || !slotId) {
+        if (!title) {
             await client.query('ROLLBACK');
-            return res.status(400).json({ error: 'Titolo e slotId sono obbligatori' });
+            return res.status(400).json({ error: 'Titolo è obbligatorio' });
         }
 
-        // Verifica che il sondaggio esista e sia aperto
         const pollResult = await client.query(
             `SELECT p.poll_id, p.title, p.duration_minutes, p.status, p.creator_user_id, p.candidate_id,
+                    p.poll_type,
                     c.email as candidate_email, c.name as candidate_name
              FROM scheduling_polls p
              LEFT JOIN candidates c ON p.candidate_id = c.candidate_id
@@ -409,39 +466,78 @@ router.post('/:id/organize', async (req, res) => {
             return res.status(400).json({ error: 'Il sondaggio è già chiuso' });
         }
 
-        // Verifica permessi: solo il creatore del sondaggio
         if (poll.creator_user_id !== req.user.userId && req.user.role !== 'Admin') {
             await client.query('ROLLBACK');
             return res.status(403).json({ error: 'Non hai i permessi per organizzare questo sondaggio' });
         }
 
-        // Recupera lo slot selezionato
-        const slotResult = await client.query(
-            `SELECT slot_id, start_time, end_time
-             FROM poll_time_slots
-             WHERE slot_id = $1 AND poll_id = $2`,
-            [slotId, id]
-        );
+        let eventStartTime: string;
+        let eventEndTime: string;
+        let participantIds: string[] = [];
 
-        if (slotResult.rows.length === 0) {
-            await client.query('ROLLBACK');
-            return res.status(404).json({ error: 'Slot non trovato' });
+        if (poll.poll_type === 'fixed_slots') {
+            if (!slotId) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({ error: 'slotId è obbligatorio per i sondaggi a slot fissi' });
+            }
+
+            const slotResult = await client.query(
+                `SELECT slot_id, start_time, end_time
+                 FROM poll_time_slots
+                 WHERE slot_id = $1 AND poll_id = $2`,
+                [slotId, id]
+            );
+
+            if (slotResult.rows.length === 0) {
+                await client.query('ROLLBACK');
+                return res.status(404).json({ error: 'Slot non trovato' });
+            }
+
+            const slot = slotResult.rows[0];
+            eventStartTime = slot.start_time;
+            eventEndTime = slot.end_time;
+
+            const votesResult = await client.query(
+                `SELECT user_id FROM poll_votes WHERE slot_id = $1`,
+                [slotId]
+            );
+
+            participantIds = votesResult.rows.map(row => row.user_id);
+        } else {
+            if (!slotStartTime) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({ error: 'slotStartTime è obbligatorio per la modalità heatmap' });
+            }
+
+            const parsedSlot = new Date(slotStartTime);
+            if (Number.isNaN(parsedSlot.getTime())) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({ error: 'slotStartTime non valido' });
+            }
+
+            const normalizedStart = parsedSlot.toISOString();
+
+            const availabilityResult = await client.query(
+                `SELECT user_id
+                 FROM open_availability_votes
+                 WHERE poll_id = $1 AND slot_start_time = $2`,
+                [id, normalizedStart]
+            );
+
+            if (availabilityResult.rows.length === 0) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({ error: 'Nessuna disponibilità registrata per lo slot selezionato' });
+            }
+
+            participantIds = availabilityResult.rows.map(row => row.user_id);
+
+            const endDate = new Date(parsedSlot.getTime() + poll.duration_minutes * 60000);
+            eventStartTime = normalizedStart;
+            eventEndTime = endDate.toISOString();
         }
 
-        const slot = slotResult.rows[0];
-
-        // Recupera i voti per questo slot (questi sono gli invitati)
-        const votesResult = await client.query(
-            `SELECT user_id FROM poll_votes WHERE slot_id = $1`,
-            [slotId]
-        );
-
-        const participantIds = votesResult.rows.map(row => row.user_id);
-
-        // Determina event_type: se c'è candidate_id, usa 'colloquio'
         const finalEventType = poll.candidate_id ? 'colloquio' : (eventType || 'generic');
 
-        // Crea l'evento (usa la stessa logica di events.js)
         const eventResult = await client.query(
             `INSERT INTO events (
                 title, description, start_time, end_time,
@@ -462,8 +558,8 @@ router.post('/:id/organize', async (req, res) => {
             [
                 title || poll.title,
                 description || '',
-                slot.start_time,
-                slot.end_time,
+                eventStartTime,
+                eventEndTime,
                 finalEventType,
                 eventSubtype || null,
                 area || null,
@@ -472,7 +568,7 @@ router.post('/:id/organize', async (req, res) => {
                 invitationRules ? JSON.stringify(invitationRules) : poll.invitation_rules,
                 'none',
                 null,
-                (finalEventType === 'call'),
+                finalEventType === 'call',
                 callLink || null,
                 req.user.userId
             ]
@@ -480,7 +576,6 @@ router.post('/:id/organize', async (req, res) => {
 
         const event = eventResult.rows[0];
 
-        // Crea i partecipanti (solo quelli che hanno votato per questo slot)
         if (participantIds.length > 0) {
             const participantValues = participantIds.map((userId, index) => {
                 const baseIndex = index * 2;
@@ -496,7 +591,6 @@ router.post('/:id/organize', async (req, res) => {
             );
         }
 
-        // Chiudi il sondaggio e collega l'evento
         await client.query(
             `UPDATE scheduling_polls
              SET status = 'closed', final_event_id = $1
@@ -506,24 +600,16 @@ router.post('/:id/organize', async (req, res) => {
 
         await client.query('COMMIT');
 
-        // Se c'è un candidato, invia email/iCal (placeholder - implementare con nodemailer/calendly API)
         if (poll.candidate_id && poll.candidate_email) {
             try {
-                // TODO: Implementare invio email con nodemailer o servizio esterno
-                // Esempio struttura email:
-                // - Oggetto: "Colloquio con [Nome Azienda] - [Data/Ora]"
-                // - Corpo: Dettagli evento, link meeting se presente
-                // - Allegato iCal (.ics) per aggiunta al calendario
-                console.log(`📧 [PLACEHOLDER] Email da inviare a ${poll.candidate_email} per colloquio il ${slot.start_time}`);
+                console.log(`📧 [PLACEHOLDER] Email da inviare a ${poll.candidate_email} per colloquio il ${eventStartTime}`);
                 console.log(`   Evento: ${eventResult.rows[0].title}`);
                 console.log(`   Dettagli: ${description || 'Nessuna descrizione'}`);
             } catch (emailError) {
                 console.error('Errore invio email candidato:', emailError);
-                // Non blocchiamo la risposta se l'email fallisce
             }
         }
 
-        // Recupera l'evento completo con partecipanti
         const participantsResult = await pool.query(
             `SELECT p.participant_id as id, p.status,
                     u.user_id as "userId", u.name as "userName", u.email as "userEmail"
@@ -533,8 +619,8 @@ router.post('/:id/organize', async (req, res) => {
             [event.id]
         );
 
-        res.status(201).json({ 
-            ...event, 
+        res.status(201).json({
+            ...event,
             participants: participantsResult.rows,
             message: 'Evento creato con successo dal sondaggio',
             candidateNotified: !!poll.candidate_id
@@ -548,5 +634,159 @@ router.post('/:id/organize', async (req, res) => {
     }
 });
 
+// POST /api/polls/:id/availability - Registra disponibilità granulari (modalità heatmap)
+router.post('/:id/availability', async (req, res) => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        const { id } = req.params;
+        const { slots } = req.body;
+
+        if (!Array.isArray(slots)) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: 'slots deve essere un array' });
+        }
+
+        const pollCheck = await pool.query(
+            'SELECT status, poll_type, duration_minutes FROM scheduling_polls WHERE poll_id = $1',
+            [id]
+        );
+
+        if (pollCheck.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: 'Sondaggio non trovato' });
+        }
+
+        const pollRow = pollCheck.rows[0];
+
+        if (pollRow.status !== 'open') {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: 'Il sondaggio è chiuso' });
+        }
+
+        if (pollRow.poll_type !== 'open_availability') {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: 'Questo sondaggio non supporta la modalità heatmap' });
+        }
+
+        await client.query(
+            `DELETE FROM open_availability_votes
+             WHERE poll_id = $1 AND user_id = $2`,
+            [id, req.user.userId]
+        );
+
+        const uniqueSlots = Array.from(new Set(slots));
+        let inserted = 0;
+
+        if (uniqueSlots.length > 0) {
+            const parsedSlots = uniqueSlots
+                .map(slot => {
+                    const date = new Date(slot);
+                    if (Number.isNaN(date.getTime())) {
+                        return null;
+                    }
+                    return date.toISOString();
+                })
+                .filter(Boolean);
+
+            if (parsedSlots.length !== uniqueSlots.length) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({ error: 'Formato slot non valido' });
+            }
+
+            const values = parsedSlots
+                .map((_, index) => {
+                    const base = index * 2;
+                    return `($1, $${base + 2}, $${base + 3})`;
+                })
+                .join(', ');
+
+            const params = [id];
+            parsedSlots.forEach(slot => {
+                params.push(slot);
+                params.push(req.user.userId);
+            });
+
+            await client.query(
+                `INSERT INTO open_availability_votes (poll_id, slot_start_time, user_id)
+                 VALUES ${values}`,
+                params
+            );
+            inserted = parsedSlots.length;
+        }
+
+        await client.query('COMMIT');
+
+        res.json({
+            message: 'Disponibilità registrata',
+            saved: inserted
+        });
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Errore availability sondaggio:', error);
+        res.status(500).json({ error: 'Errore interno del server' });
+    } finally {
+        client.release();
+    }
+});
+
+// GET /api/polls/:id/heatmap - Aggregazione disponibilità per heatmap
+router.get('/:id/heatmap', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const pollResult = await pool.query(
+            `SELECT poll_id, creator_user_id, poll_type, duration_minutes
+             FROM scheduling_polls
+             WHERE poll_id = $1`,
+            [id]
+        );
+
+        if (pollResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Sondaggio non trovato' });
+        }
+
+        const poll = pollResult.rows[0];
+
+        if (poll.poll_type !== 'open_availability') {
+            return res.status(400).json({ error: 'Questo sondaggio non utilizza la modalità heatmap' });
+        }
+
+        const isOwnerOrAdmin = poll.creator_user_id === req.user.userId || req.user.role === 'Admin';
+        if (!isOwnerOrAdmin) {
+            return res.status(403).json({ error: 'Non hai i permessi per visualizzare questa heatmap' });
+        }
+
+        const heatmapResult = await pool.query(
+            `SELECT v.slot_start_time as "slotStartTime",
+                    COUNT(*)::int as "availableUsers",
+                    json_agg(
+                        json_build_object(
+                            'userId', u.user_id,
+                            'userName', u.name,
+                            'userEmail', u.email
+                        ) ORDER BY u.name
+                    ) as users
+             FROM open_availability_votes v
+             JOIN users u ON v.user_id = u.user_id
+             WHERE v.poll_id = $1
+             GROUP BY v.slot_start_time
+             ORDER BY v.slot_start_time ASC`,
+            [id]
+        );
+
+        res.json({
+            pollId: id,
+            durationMinutes: poll.duration_minutes,
+            slots: heatmapResult.rows,
+        });
+    } catch (error) {
+        console.error('Errore heatmap sondaggio:', error);
+        res.status(500).json({ error: 'Errore interno del server' });
+    }
+});
+
 export default router;
+
 
