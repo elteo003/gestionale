@@ -634,6 +634,72 @@ router.post('/:id/organize', async (req, res) => {
     }
 });
 
+// POST /api/polls/:id/close - Chiude manualmente un sondaggio
+router.post('/:id/close', async (req, res) => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        const { id } = req.params;
+
+        const pollResult = await client.query(
+            `SELECT poll_id, title, status, creator_user_id, poll_type, duration_minutes, invitation_rules,
+                    final_event_id, candidate_id, created_at
+             FROM scheduling_polls
+             WHERE poll_id = $1`,
+            [id]
+        );
+
+        if (pollResult.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: 'Sondaggio non trovato' });
+        }
+
+        const poll = pollResult.rows[0];
+
+        if (poll.status === 'closed') {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: 'Il sondaggio è già chiuso' });
+        }
+
+        const allowedRoles = ['Admin', 'Manager', 'CDA', 'Responsabile', 'Presidente'];
+        const isCreator = poll.creator_user_id === req.user.userId;
+        const hasPrivileges = allowedRoles.includes(req.user.role);
+
+        if (!isCreator && !hasPrivileges) {
+            await client.query('ROLLBACK');
+            return res.status(403).json({ error: 'Non hai i permessi per chiudere questo sondaggio' });
+        }
+
+        const updateResult = await client.query(
+            `UPDATE scheduling_polls
+             SET status = 'closed', updated_at = NOW()
+             WHERE poll_id = $1
+             RETURNING poll_id as id, title, duration_minutes as "durationMinutes",
+                       invitation_rules as "invitationRules", status,
+                       final_event_id as "finalEventId",
+                       candidate_id as "candidateId",
+                       poll_type as "pollType",
+                       creator_user_id as "creatorUserId",
+                       created_at as "createdAt"`,
+            [id]
+        );
+
+        await client.query('COMMIT');
+
+        return res.json({
+            message: 'Sondaggio chiuso con successo',
+            poll: updateResult.rows[0]
+        });
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Errore chiusura sondaggio:', error);
+        res.status(500).json({ error: 'Errore interno del server' });
+    } finally {
+        client.release();
+    }
+});
+
 // POST /api/polls/:id/availability - Registra disponibilità granulari (modalità heatmap)
 router.post('/:id/availability', async (req, res) => {
     const client = await pool.connect();

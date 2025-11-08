@@ -411,6 +411,10 @@ export const pollsAPI = {
             method: 'POST',
             body: JSON.stringify(data),
         }),
+    close: (id: string) =>
+        apiCall(`/api/polls/${id}/close`, {
+            method: 'POST',
+        }),
 };
 
 // Users API

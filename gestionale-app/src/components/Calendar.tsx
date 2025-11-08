@@ -1854,6 +1854,7 @@ function PollViewModal({ poll, currentUser, allClients, onClose, onSuccess }: an
     const [organizingHeatmapSlot, setOrganizingHeatmapSlot] = useState<string | null>(null);
     const [organizeLoading, setOrganizeLoading] = useState(false);
     const [organizeFormData, setOrganizeFormData] = useState<OrganizeFormState>(() => createDefaultOrganizeForm(poll.title));
+    const [closing, setClosing] = useState(false);
 
     const isCreator = poll.creatorUserId === currentUser?.id;
 
@@ -1891,6 +1892,12 @@ function PollViewModal({ poll, currentUser, allClients, onClose, onSuccess }: an
     useEffect(() => {
       loadPollDetails();
     }, [loadPollDetails]);
+
+    useEffect(() => {
+      if (pollData?.status === 'closed') {
+        setActiveView('results');
+      }
+    }, [pollData?.status]);
 
     const loadHeatmap = useCallback(async () => {
       try {
@@ -1930,6 +1937,7 @@ function PollViewModal({ poll, currentUser, allClients, onClose, onSuccess }: an
     const durationMinutes = pollData?.durationMinutes ?? poll.durationMinutes ?? 60;
     const selectedHeatmapUsers: HeatmapSlotUser[] = heatmapSelection?.users ?? [];
     const selectedHeatmapUserCount = selectedHeatmapUsers.length;
+    const isClosed = pollData?.status === 'closed';
 
     const formatDateTime = (dateString: string) => {
       const date = new Date(dateString);
@@ -2013,6 +2021,24 @@ function PollViewModal({ poll, currentUser, allClients, onClose, onSuccess }: an
       }
     };
 
+    const handleClosePoll = async () => {
+      if (!window.confirm('Sei sicuro di voler chiudere definitivamente questo sondaggio?')) {
+        return;
+      }
+
+      try {
+        setClosing(true);
+        await pollsAPI.close(poll.id);
+        alert('Sondaggio chiuso con successo!');
+        onSuccess();
+        onClose();
+      } catch (error: any) {
+        alert('Errore: ' + (error.message || 'Errore sconosciuto'));
+      } finally {
+        setClosing(false);
+      }
+    };
+
     if (loading || !pollData) {
       return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -2032,17 +2058,36 @@ function PollViewModal({ poll, currentUser, allClients, onClose, onSuccess }: an
             <X className="w-6 h-6" />
           </button>
           <div className="p-6">
-            <h2 className="text-2xl font-bold mb-4">{pollData.title}</h2>
-            <div className="text-sm text-gray-600 mb-6">
+            <div className="flex flex-col gap-3 mb-4 md:flex-row md:items-start md:justify-between">
+              <h2 className="text-2xl font-bold">{pollData.title}</h2>
+              {isCreator && !isClosed && (
+                <button
+                  type="button"
+                  onClick={handleClosePoll}
+                  disabled={closing}
+                  className="inline-flex items-center justify-center px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg transition-colors hover:bg-red-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {closing ? 'Chiusura...' : 'Chiudi sondaggio'}
+                </button>
+              )}
+            </div>
+            <div className="text-sm text-gray-600 mb-4">
               Durata prevista: {durationMinutes} minuti • Creato da: {pollData.creatorName}
             </div>
+            {isClosed && (
+              <div className="mb-4 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
+                Questo sondaggio è stato chiuso. Puoi comunque consultare i risultati nella scheda dedicata.
+              </div>
+            )}
             <div className="flex gap-2 mb-6 border-b border-gray-200">
               <button
                 onClick={() => setActiveView('vote')}
                 className={cn(
                   'px-4 py-2 font-medium transition-colors',
-                  activeView === 'vote' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-600 hover:text-gray-900'
+                  activeView === 'vote' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-600 hover:text-gray-900',
+                  isClosed && 'pointer-events-none opacity-50'
                 )}
+                disabled={isClosed}
               >
                 <CheckSquare className="w-4 h-4 inline mr-2" />Vota Disponibilità
               </button>
@@ -2059,7 +2104,7 @@ function PollViewModal({ poll, currentUser, allClients, onClose, onSuccess }: an
               )}
             </div>
 
-            {activeView === 'vote' && (
+            {activeView === 'vote' && !isClosed && (
               isFixedPoll ? (
                 <div>
                   <h3 className="text-lg font-semibold mb-4">Seleziona gli slot per cui sei disponibile</h3>
