@@ -471,9 +471,9 @@ router.post('/:id/organize', async (req, res) => {
             return res.status(403).json({ error: 'Non hai i permessi per organizzare questo sondaggio' });
         }
 
-        let eventStartTime: string;
-        let eventEndTime: string;
-        let participantIds: string[] = [];
+        let eventStartTime;
+        let eventEndTime;
+        let participantIds = [];
 
         if (poll.poll_type === 'fixed_slots') {
             if (!slotId) {
