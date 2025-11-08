@@ -557,8 +557,9 @@ function EventDetailModal({ event, currentUser, onClose, onRSVP, onRefresh }: an
     const [loadingReports, setLoadingReports] = useState(false);
     const [isReportEditorOpen, setIsReportEditorOpen] = useState(false);
     const [editingReport, setEditingReport] = useState<any>(null);
-    
+    const isCreator = currentUser?.id === event.creatorId;
     const myStatus = event.participants?.find((p: Participant) => p.userId === currentUser?.id)?.status;
+    const pendingParticipants = event.participants?.filter((p: Participant) => p.status === 'pending') ?? [];
     const isEventPast = new Date(event.endTime) < new Date();
     const isManager = currentUser?.role === 'Manager' || currentUser?.role === 'CDA' || 
                      currentUser?.role === 'Admin' || currentUser?.role === 'Responsabile' || 
@@ -718,10 +719,10 @@ function EventDetailModal({ event, currentUser, onClose, onRSVP, onRefresh }: an
                     )}
 
                     {/* RSVP Buttons (solo se non è il creatore e non è già accettato/rifiutato) */}
-                    {currentUser && event.creatorId !== currentUser.id && (
+                    {currentUser && !isCreator && (
                         <div className="mb-6 p-4 bg-gray-50 rounded-lg">
                             <h3 className="font-medium mb-3">Il tuo invito</h3>
-                            {myStatus ? (
+                            {myStatus === 'accepted' || myStatus === 'declined' ? (
                                 <div className="flex items-center gap-2">
                                     <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(myStatus)}`}>
                                         {getStatusLabel(myStatus)}
@@ -743,6 +744,22 @@ function EventDetailModal({ event, currentUser, onClose, onRSVP, onRefresh }: an
                                     </button>
                                 </div>
                             )}
+                        </div>
+                    )}
+
+                    {/* Badge stato inviti pendenti visibile solo all'organizzatore */}
+                    {isCreator && pendingParticipants.length > 0 && (
+                        <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                            <h3 className="font-medium mb-3">Risposte in sospeso</h3>
+                            <div className="flex items-center gap-2">
+                                <span
+                                    className="px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800 cursor-help"
+                                    title={pendingParticipants.map((p: Participant) => p.userName).join(', ')}
+                                >
+                                    In attesa di risposta ({pendingParticipants.length})
+                                </span>
+                                <span className="text-xs text-yellow-700">Passa sopra per vedere chi deve ancora rispondere</span>
+                            </div>
                         </div>
                     )}
 
