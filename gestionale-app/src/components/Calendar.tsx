@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
 import { Plus, Clock, Users, CheckCircle, XCircle, Phone, AlertCircle, Briefcase, GraduationCap, Network, X, FileText, Edit2, Trash2, Calendar as CalendarIcon2, BarChart3, CheckSquare, ChevronLeft, ChevronRight } from 'lucide-react';
 import { eventsAPI, usersAPI, projectsAPI, clientsAPI, pollsAPI } from '../services/api.ts';
 import { cn } from '../utils/cn';
@@ -32,6 +32,19 @@ interface Participant {
     status: 'pending' | 'accepted' | 'declined';
 }
 
+interface HeatmapSlotUser {
+    userId: string;
+    userName: string;
+    userEmail?: string;
+}
+
+interface HeatmapSlot {
+    slotStartTime: string;
+    availableUsers: number;
+    userIds?: string[];
+    users?: HeatmapSlotUser[];
+}
+
 interface OrganizeFormState {
     title: string;
     description: string;
@@ -53,6 +66,39 @@ interface Project {
     status: string;
     clientName?: string;
     assignedAt?: string;
+}
+
+interface WeekDaySlots {
+    day: Date;
+    slots: Date[];
+}
+
+interface AvailabilitySelectorProps {
+    durationMinutes: number;
+    selectedSlots: string[];
+    onChange: Dispatch<SetStateAction<string[]>>;
+    weekStart: Date;
+    onWeekChange: (date: Date) => void;
+}
+
+interface HeatmapGridProps {
+    durationMinutes: number;
+    data: HeatmapSlot[];
+    weekStart: Date;
+    onWeekChange: (date: Date) => void;
+    loading: boolean;
+    selectedSlot: string | null;
+    onSelectSlot: (slot: HeatmapSlot) => void;
+}
+
+interface EventOrganizeFormProps {
+    formData: OrganizeFormState;
+    setFormData: Dispatch<SetStateAction<OrganizeFormState>>;
+    allClients: any[];
+    onCancel: () => void;
+    onSubmit: () => void;
+    submitting: boolean;
+    submitLabel: string;
 }
 
 export default function Calendar({ currentUser }: CalendarProps) {
@@ -1877,11 +1923,13 @@ function PollViewModal({ poll, currentUser, allClients, onClose, onSuccess }: an
     }, [pollData?.pollType, activeView, isCreator, loadHeatmap]);
 
     useEffect(() => {
-      setOrganizeFormData(prev => ({ ...prev, title: poll.title || prev.title }));
+      setOrganizeFormData((prev: OrganizeFormState) => ({ ...prev, title: poll.title || prev.title }));
     }, [poll.title]);
 
     const isFixedPoll = pollData?.pollType === 'fixed_slots';
     const durationMinutes = pollData?.durationMinutes ?? poll.durationMinutes ?? 60;
+    const selectedHeatmapUsers: HeatmapSlotUser[] = heatmapSelection?.users ?? [];
+    const selectedHeatmapUserCount = selectedHeatmapUsers.length;
 
     const formatDateTime = (dateString: string) => {
       const date = new Date(dateString);
@@ -2223,11 +2271,11 @@ function PollViewModal({ poll, currentUser, allClients, onClose, onSuccess }: an
                           Annulla selezione
                         </button>
                       </div>
-                      {heatmapSelection.users?.length > 0 && (
+                      {selectedHeatmapUserCount > 0 && (
                         <div>
                           <div className="text-xs font-medium text-indigo-900 mb-2 uppercase tracking-wide">Disponibili</div>
                           <div className="flex flex-wrap gap-2">
-                            {heatmapSelection.users.map(user => (
+                            {selectedHeatmapUsers.map((user: HeatmapSlotUser) => (
                               <span key={user.userId} className="px-2 py-1 text-xs bg-white border border-indigo-200 rounded text-indigo-700">
                                 {user.userName}
                               </span>
@@ -2301,15 +2349,15 @@ function PollViewModal({ poll, currentUser, allClients, onClose, onSuccess }: an
         <div className="overflow-x-auto">
           <div className="grid grid-cols-8 gap-px bg-gray-200 rounded-lg overflow-hidden text-xs sm:text-sm min-w-[720px]">
             <div className="bg-white font-semibold p-2 text-center">Orario</div>
-            {weekGrid.map(day => (
+            {weekGrid.map((day: WeekDaySlots) => (
               <div key={day.day.toISOString()} className="bg-white font-semibold p-2 text-center capitalize">
                 {formatDayLabel(day.day)}
               </div>
             ))}
-            {timeSlots.map((slotTime, rowIndex) => (
+            {timeSlots.map((slotTime: Date, rowIndex: number) => (
               <React.Fragment key={slotTime.toISOString()}>
                 <div className="bg-white p-2 font-medium text-center">{formatTimeLabel(slotTime)}</div>
-                {weekGrid.map(day => {
+                {weekGrid.map((day: WeekDaySlots) => {
                   const slot = day.slots[rowIndex];
                   if (!slot) {
                     return <div key={`${day.day.toISOString()}-${rowIndex}`} className="bg-gray-50" />;
@@ -2351,13 +2399,16 @@ function PollViewModal({ poll, currentUser, allClients, onClose, onSuccess }: an
     const timeSlots = weekGrid[0]?.slots ?? [];
     const dataMap = useMemo(() => {
       const map = new Map<string, HeatmapSlot>();
-      data.forEach(slot => {
+      data.forEach((slot: HeatmapSlot) => {
         const iso = new Date(slot.slotStartTime).toISOString();
         map.set(iso, slot);
       });
       return map;
     }, [data]);
-    const maxCount = useMemo(() => data.reduce((max, slot) => Math.max(max, slot.availableUsers ?? 0), 0), [data]);
+    const maxCount = useMemo(
+      () => data.reduce((max: number, slot: HeatmapSlot) => Math.max(max, slot.availableUsers ?? 0), 0),
+      [data]
+    );
 
     const handlePrevWeek = () => onWeekChange(addDays(weekStart, -7));
     const handleNextWeek = () => onWeekChange(addDays(weekStart, 7));
@@ -2387,15 +2438,15 @@ function PollViewModal({ poll, currentUser, allClients, onClose, onSuccess }: an
           <div className="overflow-x-auto">
             <div className="grid grid-cols-8 gap-px bg-gray-200 rounded-lg overflow-hidden text-xs sm:text-sm min-w-[720px]">
               <div className="bg-white font-semibold p-2 text-center">Orario</div>
-              {weekGrid.map(day => (
+              {weekGrid.map((day: WeekDaySlots) => (
                 <div key={day.day.toISOString()} className="bg-white font-semibold p-2 text-center capitalize">
                   {formatDayLabel(day.day)}
                 </div>
               ))}
-              {timeSlots.map((slotTime, rowIndex) => (
+              {timeSlots.map((slotTime: Date, rowIndex: number) => (
                 <React.Fragment key={slotTime.toISOString()}>
                   <div className="bg-white p-2 font-medium text-center">{formatTimeLabel(slotTime)}</div>
-                  {weekGrid.map(day => {
+                  {weekGrid.map((day: WeekDaySlots) => {
                     const slot = day.slots[rowIndex];
                     if (!slot) {
                       return <div key={`${day.day.toISOString()}-${rowIndex}`} className="bg-gray-50" />;
@@ -2416,7 +2467,7 @@ function PollViewModal({ poll, currentUser, allClients, onClose, onSuccess }: an
                           disabled ? 'cursor-not-allowed' : 'cursor-pointer hover:brightness-95',
                           selectedSlot === iso && 'ring-2 ring-purple-500 ring-offset-2'
                         )}
-                        title={slotInfo?.users?.map(user => user.userName).join(', ') || 'Nessuna disponibilità registrata'}
+                        title={slotInfo?.users?.map((user: HeatmapSlotUser) => user.userName).join(', ') || 'Nessuna disponibilità registrata'}
                       >
                         <span className="font-semibold">{count > 0 ? count : '-'}</span>
                         <span className="text-[10px] sm:text-xs uppercase tracking-wide">Disponibili</span>
@@ -2457,7 +2508,7 @@ function PollViewModal({ poll, currentUser, allClients, onClose, onSuccess }: an
           <input
             type="text"
             value={formData.title}
-            onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+            onChange={(e) => setFormData((prev: OrganizeFormState) => ({ ...prev, title: e.target.value }))}
             placeholder="Titolo dell'evento"
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             required
@@ -2469,7 +2520,7 @@ function PollViewModal({ poll, currentUser, allClients, onClose, onSuccess }: an
             value={formData.eventType}
             onChange={(e) => {
               const value = e.target.value as OrganizeFormState['eventType'];
-              setFormData(prev => ({
+              setFormData((prev: OrganizeFormState) => ({
                 ...prev,
                 eventType: value,
                 eventSubtype: value === 'call' ? prev.eventSubtype : 'call_interna',
@@ -2494,7 +2545,7 @@ function PollViewModal({ poll, currentUser, allClients, onClose, onSuccess }: an
                 value={formData.eventSubtype}
                 onChange={(e) => {
                   const value = e.target.value as OrganizeFormState['eventSubtype'];
-                  setFormData(prev => ({
+                  setFormData((prev: OrganizeFormState) => ({
                     ...prev,
                     eventSubtype: value,
                     area: value === 'call_reparto' ? prev.area : '',
@@ -2513,7 +2564,7 @@ function PollViewModal({ poll, currentUser, allClients, onClose, onSuccess }: an
                 <label className="block text-sm font-medium text-gray-700 mb-1">Area</label>
                 <select
                   value={formData.area}
-                  onChange={(e) => setFormData(prev => ({ ...prev, area: e.target.value }))}
+                  onChange={(e) => setFormData((prev: OrganizeFormState) => ({ ...prev, area: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 >
                   <option value="">Seleziona Area</option>
@@ -2528,7 +2579,7 @@ function PollViewModal({ poll, currentUser, allClients, onClose, onSuccess }: an
                 <label className="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
                 <select
                   value={formData.clientId}
-                  onChange={(e) => setFormData(prev => ({ ...prev, clientId: e.target.value }))}
+                  onChange={(e) => setFormData((prev: OrganizeFormState) => ({ ...prev, clientId: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 >
                   <option value="">Seleziona Cliente</option>
@@ -2543,7 +2594,7 @@ function PollViewModal({ poll, currentUser, allClients, onClose, onSuccess }: an
               <input
                 type="url"
                 value={formData.callLink}
-                onChange={(e) => setFormData(prev => ({ ...prev, callLink: e.target.value }))}
+                onChange={(e) => setFormData((prev: OrganizeFormState) => ({ ...prev, callLink: e.target.value }))}
                 placeholder="https://meet.google.com/xxx-xxxx-xxx"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
@@ -2554,7 +2605,7 @@ function PollViewModal({ poll, currentUser, allClients, onClose, onSuccess }: an
           <label className="block text-sm font-medium text-gray-700 mb-1">Descrizione (opzionale)</label>
           <textarea
             value={formData.description}
-            onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+            onChange={(e) => setFormData((prev: OrganizeFormState) => ({ ...prev, description: e.target.value }))}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             rows={3}
           />
