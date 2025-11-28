@@ -630,6 +630,13 @@ function Sidebar({ activeView, setActiveView, user, onLogout, className = '', on
                         <div className="text-xs text-neutral-400 dark:text-neutral-500">{user?.role || 'Ruolo sconosciuto'}</div>
                     </div>
                 </div>
+                <button
+                    onClick={onLogout}
+                    className="flex items-center w-full px-4 py-2 text-left text-neutral-300 dark:text-neutral-400 hover:bg-neutral-700 dark:hover:bg-neutral-800 hover:text-white dark:hover:text-neutral-100 rounded transition-colors duration-200"
+                >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    <span className="text-sm">Esci</span>
+                </button>
             </div>
         </nav>
     );
@@ -1058,8 +1065,8 @@ function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, on
                             <button
                                 onClick={() => setActiveTab('todos')}
                                 className={`px-4 py-2 text-sm font-medium ${activeTab === 'todos'
-                                    ? 'border-b-2 border-indigo-500 text-indigo-600'
-                                    : 'text-gray-500 hover:text-gray-700'
+                                        ? 'border-b-2 border-indigo-500 text-indigo-600'
+                                        : 'text-gray-500 hover:text-gray-700'
                                     }`}
                             >
                                 To-do List (Legacy)
@@ -1067,8 +1074,8 @@ function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, on
                             <button
                                 onClick={() => setActiveTab('team')}
                                 className={`px-4 py-2 text-sm font-medium ${activeTab === 'team'
-                                    ? 'border-b-2 border-indigo-500 text-indigo-600'
-                                    : 'text-gray-500 hover:text-gray-700'
+                                        ? 'border-b-2 border-indigo-500 text-indigo-600'
+                                        : 'text-gray-500 hover:text-gray-700'
                                     }`}
                             >
                                 Team
@@ -1076,8 +1083,8 @@ function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, on
                             <button
                                 onClick={() => setActiveTab('tasks')}
                                 className={`px-4 py-2 text-sm font-medium ${activeTab === 'tasks'
-                                    ? 'border-b-2 border-indigo-500 text-indigo-600'
-                                    : 'text-gray-500 hover:text-gray-700'
+                                        ? 'border-b-2 border-indigo-500 text-indigo-600'
+                                        : 'text-gray-500 hover:text-gray-700'
                                     }`}
                             >
                                 Tasks
@@ -1217,8 +1224,8 @@ function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, on
                                                         </div>
                                                         <div className="flex items-center justify-between">
                                                             <span className={`text-xs px-2 py-1 rounded-full ${task.priority === 'Alta' ? 'bg-red-100 text-red-700' :
-                                                                task.priority === 'Media' ? 'bg-yellow-100 text-yellow-700' :
-                                                                    'bg-green-100 text-green-700'
+                                                                    task.priority === 'Media' ? 'bg-yellow-100 text-yellow-700' :
+                                                                        'bg-green-100 text-green-700'
                                                                 }`}>
                                                                 {task.priority}
                                                             </span>
@@ -1261,8 +1268,8 @@ function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, on
                                                                         <div className="flex items-center justify-between mb-1">
                                                                             <span className="text-gray-900">{task.description}</span>
                                                                             <span className={`text-xs px-2 py-1 rounded-full ${task.priority === 'Alta' ? 'bg-red-100 text-red-700' :
-                                                                                task.priority === 'Media' ? 'bg-yellow-100 text-yellow-700' :
-                                                                                    'bg-green-100 text-green-700'
+                                                                                    task.priority === 'Media' ? 'bg-yellow-100 text-yellow-700' :
+                                                                                        'bg-green-100 text-green-700'
                                                                                 }`}>
                                                                                 {task.priority}
                                                                             </span>
@@ -1286,9 +1293,9 @@ function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, on
                                                                             }}
                                                                             disabled={user.id !== task.assignedTo}
                                                                             className={`text-xs px-2 py-1 rounded-md border ${task.status === 'Completato' ? 'bg-green-100 text-green-700 border-green-300' :
-                                                                                task.status === 'In Corso' ? 'bg-yellow-100 text-yellow-700 border-yellow-300' :
-                                                                                    task.status === 'In Revisione' ? 'bg-blue-100 text-blue-700 border-blue-300' :
-                                                                                        'bg-red-100 text-red-700 border-red-300'
+                                                                                    task.status === 'In Corso' ? 'bg-yellow-100 text-yellow-700 border-yellow-300' :
+                                                                                        task.status === 'In Revisione' ? 'bg-blue-100 text-blue-700 border-blue-300' :
+                                                                                            'bg-red-100 text-red-700 border-red-300'
                                                                                 } ${user.id !== task.assignedTo ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                                                                         >
                                                                             <option value="Da Fare">Da Fare</option>
@@ -1635,8 +1642,8 @@ function AddProjectForm({ clients, onSubmit }: any) {
                     type="submit"
                     disabled={!hasClients}
                     className={`px-4 py-2 rounded-lg shadow-md transition-colors duration-200 ${hasClients
-                        ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                         }`}
                 >
                     Salva Progetto
@@ -1783,8 +1790,8 @@ function AddContractForm({ clients, projects, onSubmit }: any) {
                     type="submit"
                     disabled={!hasClients}
                     className={`px-4 py-2 rounded-lg shadow-md transition-colors duration-200 ${hasClients
-                        ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                         }`}
                 >
                     Salva Documento
