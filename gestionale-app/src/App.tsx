@@ -630,7 +630,6 @@ function Sidebar({ activeView, setActiveView, user, onLogout, className = '', on
                         <div className="text-xs text-neutral-400 dark:text-neutral-500">{user?.role || 'Ruolo sconosciuto'}</div>
                     </div>
                 </div>
-
             </div>
         </nav>
     );
