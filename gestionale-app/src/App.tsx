@@ -55,10 +55,10 @@ export default function App() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalContent, setModalContent] = useState<any>(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-    
+
     // Toast system
     const { toasts, success, error, removeToast } = useToast();
-    
+
     // Stati per gestione conflitti
     const [conflictDialog, setConflictDialog] = useState<{
         isOpen: boolean;
@@ -310,7 +310,7 @@ export default function App() {
         try {
             // Mappa gli stati italiani a completed
             const completed = status === 'terminato';
-            
+
             // Se è "terminato", imposta completed = true
             // Se è "da fare", imposta completed = false
             // Per "in corso", usiamo una logica: se non è né terminato né da fare, è in corso
@@ -416,10 +416,10 @@ export default function App() {
                     const clientsArr = Array.isArray(clients) ? clients : [];
                     const projectsArr = Array.isArray(projects) ? projects : [];
                     console.log('Creating AddContractForm with clients:', clientsArr.length, 'projects:', projectsArr.length);
-                    content = <AddContractForm 
-                        clients={clientsArr} 
-                        projects={projectsArr} 
-                        onSubmit={addContract} 
+                    content = <AddContractForm
+                        clients={clientsArr}
+                        projects={projectsArr}
+                        onSubmit={addContract}
                     />;
                     break;
                 default:
@@ -521,11 +521,11 @@ export default function App() {
                     entityType={conflictDialog.entityType}
                     onResolve={async (resolution: 'yours' | 'server' | 'merged', mergedData?: Record<string, any>) => {
                         if (!conflictDialog || !conflictDialog.conflictData) return;
-                        
+
                         try {
                             let dataToSave = mergedData || conflictDialog.conflictData.yourChanges;
                             const serverVersion = conflictDialog.conflictData.serverData?.version;
-                            
+
                             if (resolution === 'server') {
                                 // Ricarica i dati dal server
                                 await loadData();
@@ -533,7 +533,7 @@ export default function App() {
                                 // Applica la risoluzione (yours o merged)
                                 await conflictDialog.updateFunction(dataToSave, serverVersion);
                             }
-                            
+
                             setConflictDialog(null);
                         } catch (err: any) {
                             console.error('Errore risoluzione conflitto:', err);
@@ -558,13 +558,13 @@ export default function App() {
 function Sidebar({ activeView, setActiveView, user, onLogout, className = '', onNavigate }: any) {
     const isAdmin = user?.role === 'Admin' || user?.role === 'IT' || user?.role === 'Responsabile';
     // Contabilità visibile solo a Tesoreria e Responsabile dell'area Commerciale
-    const canViewContabilita = user?.role === 'Tesoreria' || 
-                                (user?.role === 'Responsabile' && user?.area === 'Commerciale');
-    
+    const canViewContabilita = user?.role === 'Tesoreria' ||
+        (user?.role === 'Responsabile' && user?.area === 'Commerciale');
+
     // Verifica se l'utente è un manager/admin
     const isManager = user && (
-        user.role === 'Admin' || 
-        user.role === 'IT' || 
+        user.role === 'Admin' ||
+        user.role === 'IT' ||
         user.role === 'Responsabile' ||
         user.role === 'Presidente' ||
         user.role === 'CDA' ||
@@ -573,10 +573,10 @@ function Sidebar({ activeView, setActiveView, user, onLogout, className = '', on
         user.role === 'Commerciale' ||
         user.role === 'Audit'
     );
-    
+
     // Verifica se l'utente è un associato (non manager/admin)
     const isAssociate = user && !isManager;
-    
+
     // Verifica se l'utente può vedere Recruiting (Manager, CDA, Admin, Responsabile, Presidente)
     const canViewRecruiting = user && (
         user.role === 'Manager' ||
@@ -633,13 +633,6 @@ function Sidebar({ activeView, setActiveView, user, onLogout, className = '', on
                 <div className="mb-2">
                     <ThemeToggle />
                 </div>
-                <button
-                    onClick={onLogout}
-                    className="flex items-center w-full px-4 py-2 text-left text-neutral-300 dark:text-neutral-400 hover:bg-neutral-700 dark:hover:bg-neutral-800 hover:text-white dark:hover:text-neutral-100 rounded transition-colors duration-200"
-                >
-                    <LogOut className="w-4 h-4 mr-2" />
-                    <span className="text-sm">Esci</span>
-                </button>
             </div>
         </nav>
     );
@@ -747,7 +740,7 @@ function Dashboard({ user, clients, projects, contracts, users, events }: any) {
 function ClientiList({ clients, onUpdateClientStatus, onDeleteClient }: any) {
     // Assicurati che clients sia sempre un array
     const clientsList = Array.isArray(clients) ? clients : [];
-    
+
     if (clientsList.length === 0) {
         return (
             <div className="bg-white dark:bg-neutral-800 rounded-lg shadow-md dark:shadow-xl p-8 text-center">
@@ -756,7 +749,7 @@ function ClientiList({ clients, onUpdateClientStatus, onDeleteClient }: any) {
             </div>
         );
     }
-    
+
     return (
         <div className="bg-white dark:bg-neutral-800 rounded-lg shadow-md dark:shadow-xl overflow-hidden border border-neutral-200 dark:border-neutral-700">
             <table className="w-full divide-y divide-neutral-200 dark:divide-neutral-700">
@@ -811,7 +804,7 @@ function ClientiList({ clients, onUpdateClientStatus, onDeleteClient }: any) {
 function ProgettiList({ projects, onUpdateProjectStatus, onAddTodo, onUpdateTodoStatus, onDeleteTodo, onDeleteProject, getClientName, user, users, onError, onSuccess }: any) {
     // Assicurati che projects sia sempre un array
     const projectsList = Array.isArray(projects) ? projects : [];
-    
+
     if (projectsList.length === 0) {
         return (
             <div className="bg-white dark:bg-neutral-800 rounded-lg shadow-md dark:shadow-xl p-8 text-center">
@@ -820,7 +813,7 @@ function ProgettiList({ projects, onUpdateProjectStatus, onAddTodo, onUpdateTodo
             </div>
         );
     }
-    
+
     return (
         <div className="space-y-6">
             {projectsList.map((project: any) => (
@@ -848,7 +841,7 @@ function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, on
     const [newTodoPriority, setNewTodoPriority] = useState('Media');
     const [isExpanded, setIsExpanded] = useState(true);
     const [activeTab, setActiveTab] = useState<'todos' | 'team' | 'tasks'>('todos');
-    
+
     // Nuovi stati per Team e Tasks
     const [teamMembers, setTeamMembers] = useState<any[]>([]);
     const [tasks, setTasks] = useState<any[]>([]);
@@ -865,26 +858,26 @@ function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, on
             // Non loggare warning se user non è ancora caricato (evita spam in console)
             return false;
         }
-        
+
         const role = user.role;
         const userArea = user.area;
         const projectArea = project.area;
-        
+
         // Manager globali (possono gestire tutti i progetti)
-        const isGlobalManager = role === 'Admin' || 
-            role === 'IT' || 
+        const isGlobalManager = role === 'Admin' ||
+            role === 'IT' ||
             role === 'Responsabile' ||
             role === 'Presidente' ||
             role === 'CDA' ||
             role === 'Tesoreria' ||
             role === 'Audit';
-        
+
         // Manager di area (possono gestire solo progetti della loro area)
-        const isAreaManager = (role === 'Marketing' || role === 'Commerciale') && 
+        const isAreaManager = (role === 'Marketing' || role === 'Commerciale') &&
             (!projectArea || userArea === projectArea);
-        
+
         const result = isGlobalManager || isAreaManager;
-        
+
         // Log solo se user è disponibile per debug
         if (user && user.role) {
             console.log('ProjectCard isManager check:', {
@@ -898,7 +891,7 @@ function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, on
                 isManager: result
             });
         }
-        
+
         return result;
     }, [user, project.area, project.id, project.name]);
 
@@ -1019,8 +1012,8 @@ function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, on
     };
 
     // Filtra utenti per area del progetto (per il team)
-    const availableUsers = users.filter((u: any) => 
-        u.area === project.area && 
+    const availableUsers = users.filter((u: any) =>
+        u.area === project.area &&
         !teamMembers.find((tm: any) => tm.id === u.id)
     );
 
@@ -1067,31 +1060,28 @@ function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, on
                         <div className="flex space-x-2 mb-4 border-b border-gray-200">
                             <button
                                 onClick={() => setActiveTab('todos')}
-                                className={`px-4 py-2 text-sm font-medium ${
-                                    activeTab === 'todos' 
-                                        ? 'border-b-2 border-indigo-500 text-indigo-600' 
-                                        : 'text-gray-500 hover:text-gray-700'
-                                }`}
+                                className={`px-4 py-2 text-sm font-medium ${activeTab === 'todos'
+                                    ? 'border-b-2 border-indigo-500 text-indigo-600'
+                                    : 'text-gray-500 hover:text-gray-700'
+                                    }`}
                             >
                                 To-do List (Legacy)
                             </button>
                             <button
                                 onClick={() => setActiveTab('team')}
-                                className={`px-4 py-2 text-sm font-medium ${
-                                    activeTab === 'team' 
-                                        ? 'border-b-2 border-indigo-500 text-indigo-600' 
-                                        : 'text-gray-500 hover:text-gray-700'
-                                }`}
+                                className={`px-4 py-2 text-sm font-medium ${activeTab === 'team'
+                                    ? 'border-b-2 border-indigo-500 text-indigo-600'
+                                    : 'text-gray-500 hover:text-gray-700'
+                                    }`}
                             >
                                 Team
                             </button>
                             <button
                                 onClick={() => setActiveTab('tasks')}
-                                className={`px-4 py-2 text-sm font-medium ${
-                                    activeTab === 'tasks' 
-                                        ? 'border-b-2 border-indigo-500 text-indigo-600' 
-                                        : 'text-gray-500 hover:text-gray-700'
-                                }`}
+                                className={`px-4 py-2 text-sm font-medium ${activeTab === 'tasks'
+                                    ? 'border-b-2 border-indigo-500 text-indigo-600'
+                                    : 'text-gray-500 hover:text-gray-700'
+                                    }`}
                             >
                                 Tasks
                             </button>
@@ -1144,7 +1134,7 @@ function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, on
                     {isManager && activeTab === 'team' && (
                         <div>
                             <h4 className="text-sm font-medium text-gray-500 mb-4">Team del Progetto</h4>
-                            
+
                             {loadingTeam ? (
                                 <div className="text-sm text-gray-400">Caricamento...</div>
                             ) : (
@@ -1207,7 +1197,7 @@ function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, on
                     {isManager && activeTab === 'tasks' && (
                         <div>
                             <h4 className="text-sm font-medium text-gray-500 mb-4">Gestione Tasks</h4>
-                            
+
                             {loadingTasks ? (
                                 <div className="text-sm text-gray-400">Caricamento...</div>
                             ) : (
@@ -1229,11 +1219,10 @@ function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, on
                                                             </button>
                                                         </div>
                                                         <div className="flex items-center justify-between">
-                                                            <span className={`text-xs px-2 py-1 rounded-full ${
-                                                                task.priority === 'Alta' ? 'bg-red-100 text-red-700' :
+                                                            <span className={`text-xs px-2 py-1 rounded-full ${task.priority === 'Alta' ? 'bg-red-100 text-red-700' :
                                                                 task.priority === 'Media' ? 'bg-yellow-100 text-yellow-700' :
-                                                                'bg-green-100 text-green-700'
-                                                            }`}>
+                                                                    'bg-green-100 text-green-700'
+                                                                }`}>
                                                                 {task.priority}
                                                             </span>
                                                             <select
@@ -1274,11 +1263,10 @@ function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, on
                                                                     <div key={task.id} className="text-sm">
                                                                         <div className="flex items-center justify-between mb-1">
                                                                             <span className="text-gray-900">{task.description}</span>
-                                                                            <span className={`text-xs px-2 py-1 rounded-full ${
-                                                                                task.priority === 'Alta' ? 'bg-red-100 text-red-700' :
+                                                                            <span className={`text-xs px-2 py-1 rounded-full ${task.priority === 'Alta' ? 'bg-red-100 text-red-700' :
                                                                                 task.priority === 'Media' ? 'bg-yellow-100 text-yellow-700' :
-                                                                                'bg-green-100 text-green-700'
-                                                                            }`}>
+                                                                                    'bg-green-100 text-green-700'
+                                                                                }`}>
                                                                                 {task.priority}
                                                                             </span>
                                                                         </div>
@@ -1300,12 +1288,11 @@ function ProjectCard({ project, clientName, onUpdateProjectStatus, onAddTodo, on
                                                                                 }
                                                                             }}
                                                                             disabled={user.id !== task.assignedTo}
-                                                                            className={`text-xs px-2 py-1 rounded-md border ${
-                                                                                task.status === 'Completato' ? 'bg-green-100 text-green-700 border-green-300' :
+                                                                            className={`text-xs px-2 py-1 rounded-md border ${task.status === 'Completato' ? 'bg-green-100 text-green-700 border-green-300' :
                                                                                 task.status === 'In Corso' ? 'bg-yellow-100 text-yellow-700 border-yellow-300' :
-                                                                                task.status === 'In Revisione' ? 'bg-blue-100 text-blue-700 border-blue-300' :
-                                                                                'bg-red-100 text-red-700 border-red-300'
-                                                                            } ${user.id !== task.assignedTo ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                                                                                    task.status === 'In Revisione' ? 'bg-blue-100 text-blue-700 border-blue-300' :
+                                                                                        'bg-red-100 text-red-700 border-red-300'
+                                                                                } ${user.id !== task.assignedTo ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                                                                         >
                                                                             <option value="Da Fare">Da Fare</option>
                                                                             <option value="In Corso">In Corso</option>
@@ -1371,7 +1358,7 @@ function TodoItem({ todo, onStatusChange, onDelete }: any) {
     };
 
     const currentStatus = getCurrentStatus();
-    
+
     const statusOptions = [
         { value: 'da fare', label: 'Da Fare', color: 'bg-red-100 text-red-700 border-red-300' },
         { value: 'in corso', label: 'In Corso', color: 'bg-yellow-100 text-yellow-700 border-yellow-300' },
@@ -1391,13 +1378,13 @@ function TodoItem({ todo, onStatusChange, onDelete }: any) {
         <div className="flex items-center justify-between p-3 rounded-md hover:bg-gray-50 border border-gray-200">
             <div className="flex items-center space-x-3 flex-1">
                 <span className="text-gray-800 flex-1">{todo.text}</span>
-                
+
                 {/* Badge Priorità - più visibile */}
                 <span className={`px-2 py-1 text-xs font-semibold rounded-full border ${priorityConfig.bg} ${priorityConfig.text} ${priorityConfig.border}`}>
                     {todo.priority}
                 </span>
             </div>
-            
+
             <div className="flex items-center space-x-2">
                 {/* Selettore Stato */}
                 <select
@@ -1411,9 +1398,9 @@ function TodoItem({ todo, onStatusChange, onDelete }: any) {
                         </option>
                     ))}
                 </select>
-                
-                <button 
-                    onClick={onDelete} 
+
+                <button
+                    onClick={onDelete}
                     className="text-gray-400 hover:text-red-500 p-1 rounded transition-colors"
                     title="Elimina"
                 >
@@ -1427,7 +1414,7 @@ function TodoItem({ todo, onStatusChange, onDelete }: any) {
 function ContabilitaList({ contracts, onUpdateContractStatus, onDeleteContract, getClientName, getProjectName }: any) {
     // Assicurati che contracts sia sempre un array
     const contractsList = Array.isArray(contracts) ? contracts : [];
-    
+
     if (contractsList.length === 0) {
         return (
             <div className="bg-white rounded-lg shadow-md p-8 text-center">
@@ -1436,7 +1423,7 @@ function ContabilitaList({ contracts, onUpdateContractStatus, onDeleteContract, 
             </div>
         );
     }
-    
+
     return (
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
             <table className="w-full divide-y divide-gray-200">
@@ -1523,19 +1510,19 @@ function AddClientForm({ onSubmit }: any) {
             <FormInput name="contactPerson" label="Referente" value={formData.contactPerson} onChange={handleChange} />
             <FormInput name="email" label="Email" type="email" value={formData.email} onChange={handleChange} required />
             <FormInput name="phone" label="Telefono" value={formData.phone} onChange={handleChange} />
-            <FormSelect 
-                name="area" 
-                label="Area di Competenza" 
-                value={formData.area} 
-                onChange={handleChange} 
-                options={AREA_OPTIONS.map(area => ({ value: area, label: area }))} 
+            <FormSelect
+                name="area"
+                label="Area di Competenza"
+                value={formData.area}
+                onChange={handleChange}
+                options={AREA_OPTIONS.map(area => ({ value: area, label: area }))}
             />
-            <FormSelect 
-                name="status" 
-                label="Stato Iniziale" 
-                value={formData.status} 
-                onChange={handleChange} 
-                options={CLIENT_STATUS_OPTIONS.map(status => ({ value: status, label: status }))} 
+            <FormSelect
+                name="status"
+                label="Stato Iniziale"
+                value={formData.status}
+                onChange={handleChange}
+                options={CLIENT_STATUS_OPTIONS.map(status => ({ value: status, label: status }))}
             />
             <div className="pt-4 flex justify-end">
                 <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg shadow-md hover:bg-indigo-700 transition-colors duration-200">
@@ -1592,15 +1579,15 @@ function AddProjectForm({ clients, onSubmit }: any) {
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <h3 className="text-lg font-medium leading-6 text-gray-900 mb-4">Aggiungi Nuovo Progetto</h3>
-            
-            <FormInput 
-                name="name" 
-                label="Nome Progetto" 
-                value={formData.name} 
-                onChange={handleChange} 
-                required 
+
+            <FormInput
+                name="name"
+                label="Nome Progetto"
+                value={formData.name}
+                onChange={handleChange}
+                required
             />
-            
+
             <div>
                 <label htmlFor="clientId" className="block text-sm font-medium text-gray-700">
                     Cliente {!hasClients && <span className="text-red-500">*</span>}
@@ -1629,32 +1616,31 @@ function AddProjectForm({ clients, onSubmit }: any) {
                     </select>
                 )}
             </div>
-            
-            <FormSelect 
-                name="area" 
-                label="Area di Competenza" 
-                value={formData.area} 
-                onChange={handleChange} 
-                options={areaOptions} 
+
+            <FormSelect
+                name="area"
+                label="Area di Competenza"
+                value={formData.area}
+                onChange={handleChange}
+                options={areaOptions}
             />
-            
-            <FormSelect 
-                name="status" 
-                label="Stato Iniziale" 
-                value={formData.status} 
-                onChange={handleChange} 
-                options={statusOptions} 
+
+            <FormSelect
+                name="status"
+                label="Stato Iniziale"
+                value={formData.status}
+                onChange={handleChange}
+                options={statusOptions}
             />
-            
+
             <div className="pt-4 flex justify-end">
-                <button 
-                    type="submit" 
+                <button
+                    type="submit"
                     disabled={!hasClients}
-                    className={`px-4 py-2 rounded-lg shadow-md transition-colors duration-200 ${
-                        hasClients 
-                            ? 'bg-indigo-600 text-white hover:bg-indigo-700' 
-                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    }`}
+                    className={`px-4 py-2 rounded-lg shadow-md transition-colors duration-200 ${hasClients
+                        ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        }`}
                 >
                     Salva Progetto
                 </button>
@@ -1725,9 +1711,9 @@ function AddContractForm({ clients, projects, onSubmit }: any) {
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <h3 className="text-lg font-medium leading-6 text-gray-900 mb-4">Aggiungi Documento</h3>
-            
+
             <FormSelect name="type" label="Tipo" value={formData.type} onChange={handleChange} options={typeOptions} />
-            
+
             <div>
                 <label htmlFor="contractClientId" className="block text-sm font-medium text-gray-700">
                     Cliente {!hasClients && <span className="text-red-500">*</span>}
@@ -1756,7 +1742,7 @@ function AddContractForm({ clients, projects, onSubmit }: any) {
                     </select>
                 )}
             </div>
-            
+
             <div>
                 <label htmlFor="contractProjectId" className="block text-sm font-medium text-gray-700">
                     Progetto (opzionale)
@@ -1790,20 +1776,19 @@ function AddContractForm({ clients, projects, onSubmit }: any) {
                     </select>
                 )}
             </div>
-            
+
             <FormInput name="amount" label="Importo (€)" type="number" value={formData.amount} onChange={handleChange} required />
             <FormInput name="date" label="Data" type="date" value={formData.date} onChange={handleChange} required />
             <FormSelect name="status" label="Stato Iniziale" value={formData.status} onChange={handleChange} options={statusOptions} />
-            
+
             <div className="pt-4 flex justify-end">
-                <button 
-                    type="submit" 
+                <button
+                    type="submit"
                     disabled={!hasClients}
-                    className={`px-4 py-2 rounded-lg shadow-md transition-colors duration-200 ${
-                        hasClients 
-                            ? 'bg-indigo-600 text-white hover:bg-indigo-700' 
-                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    }`}
+                    className={`px-4 py-2 rounded-lg shadow-md transition-colors duration-200 ${hasClients
+                        ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        }`}
                 >
                     Salva Documento
                 </button>
@@ -1834,7 +1819,7 @@ function FormInput({ label, name, type = 'text', value, onChange, required = fal
 function FormSelect({ label, name, value, onChange, options, required = false }: any) {
     // Assicurati che options sia sempre un array
     const optionsList = Array.isArray(options) ? options : [];
-    
+
     return (
         <div>
             <label htmlFor={name} className="block text-sm font-medium text-gray-700">{label}</label>
