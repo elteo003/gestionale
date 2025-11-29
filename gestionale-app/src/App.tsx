@@ -1806,7 +1806,7 @@ function AddContractForm({ clients, projects, onSubmit }: any) {
 function FormInput({ label, name, type = 'text', value, onChange, required = false }: any) {
     return (
         <div>
-            <label htmlFor={name} className="block text-sm font-medium text-gray-700">{label}</label>
+            <label htmlFor={name} className="block text-sm font-medium dark:text-white-700">{label}</label>
             <input
                 type={type}
                 id={name}
@@ -1814,7 +1814,7 @@ function FormInput({ label, name, type = 'text', value, onChange, required = fal
                 value={value}
                 onChange={onChange}
                 required={required}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                className="bg-white dark:bg-gray-700 dark:text-white mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             />
         </div>
     );
@@ -1826,14 +1826,14 @@ function FormSelect({ label, name, value, onChange, options, required = false }:
 
     return (
         <div>
-            <label htmlFor={name} className="block text-sm font-medium text-gray-700">{label}</label>
+            <label htmlFor={name} className="block text-sm font-medium dark:text-white-700">{label}</label>
             <select
                 id={name}
                 name={name}
                 value={value || ''}
                 onChange={onChange}
                 required={required}
-                className=" bg-white dark:bg-gray-700  dark:text-white mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                className="bg-white dark:bg-gray-700  dark:text-white mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             >
                 {optionsList.length === 0 ? (
                     <option value="">Nessuna opzione disponibile</option>
