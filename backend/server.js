@@ -28,7 +28,7 @@ app.use((req, res, next) => {
     console.log(`\n[${timestamp}] ${req.method} ${req.path}`);
     console.log('   Origin:', req.headers.origin || 'N/A');
     console.log('   Content-Type:', req.headers['content-type'] || 'N/A');
-    
+
     // Log del body solo per POST/PUT (senza password)
     if ((req.method === 'POST' || req.method === 'PUT') && req.body) {
         const bodyCopy = { ...req.body };
@@ -37,7 +37,7 @@ app.use((req, res, next) => {
         }
         console.log('   Body:', JSON.stringify(bodyCopy).substring(0, 200));
     }
-    
+
     next();
 });
 
@@ -49,10 +49,10 @@ const corsOptions = {
             'http://localhost:5173',
             'https://gestionale-i5bj.onrender.com'
         ].filter(Boolean); // Rimuove valori undefined/null
-        
+
         // Permetti richieste senza origin (es. Postman, curl)
         if (!origin) return callback(null, true);
-        
+
         if (allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
@@ -76,7 +76,7 @@ app.get('/health', async (req, res) => {
     console.log('🏥 Health check richiesto');
     let dbStatus = 'ok';
     let dbError = null;
-    
+
     try {
         console.log('   Testando connessione database...');
         const startTime = Date.now();
@@ -89,17 +89,17 @@ app.get('/health', async (req, res) => {
         dbStatus = 'error';
         dbError = error.message;
     }
-    
-    const response = { 
-        status: 'OK', 
+
+    const response = {
+        status: 'OK',
         db: dbStatus,
-        timestamp: new Date().toISOString() 
+        timestamp: new Date().toISOString()
     };
-    
+
     if (dbError) {
         response.dbError = dbError;
     }
-    
+
     res.json(response);
 });
 
@@ -127,6 +127,16 @@ app.use((err, req, res, next) => {
         ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
     });
 });
+
+// health check handler
+
+app.get('/', (req, res) => {
+    res.status(200).json({
+        status: 'online',
+        message: 'Gestionale JEINS API is running'
+    });
+});
+
 
 // 404 handler
 app.use((req, res) => {
@@ -162,7 +172,7 @@ app.listen(PORT, async () => {
     console.log(`🔗 Database URL: ${process.env.DATABASE_URL ? 'Configurato ✅' : 'NON CONFIGURATO ⚠️'}`);
     console.log(`🔐 JWT Secret: ${process.env.JWT_SECRET ? 'Configurato ✅' : 'NON CONFIGURATO ⚠️'}`);
     console.log('═══════════════════════════════════════════════════════════\n');
-    
+
     // Verifica che le route siano state registrate
     console.log('🔍 Verifica route registrate:');
     const routes = [];
@@ -178,17 +188,17 @@ app.listen(PORT, async () => {
     });
     routes.forEach(r => console.log(`   ${r}`));
     console.log('═══════════════════════════════════════════════════════════\n');
-    
+
     if (!process.env.DATABASE_URL) {
         console.error('⚠️  ATTENZIONE: DATABASE_URL non è configurato!');
     }
     if (!process.env.JWT_SECRET) {
         console.error('⚠️  ATTENZIONE: JWT_SECRET non è configurato!');
     }
-    
+
     // Test connessione database
     await testDatabaseConnection();
-    
+
     console.log('\n📝 Logging attivo: tutte le richieste verranno loggate');
     console.log('═══════════════════════════════════════════════════════════\n');
 });
