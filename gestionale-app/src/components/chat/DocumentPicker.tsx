@@ -38,7 +38,7 @@ export function DocumentPicker({ chatId, onPick, onClose }: DocumentPickerProps)
     }, [chatId, q]);
 
     return (
-        <div className="absolute bottom-full left-0 right-0 mb-2 bento-panel p-2 z-20 max-h-64 flex flex-col">
+        <div className="max-h-64 flex flex-col">
             <div className="flex items-center gap-2 px-1 pb-2">
                 <Search className="w-3.5 h-3.5 text-ink-subtle flex-shrink-0" aria-hidden="true" />
                 <input

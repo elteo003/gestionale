@@ -258,6 +258,25 @@
     transition: transform 0.18s cubic-bezier(0.19, 1, 0.22, 1);
   }
 
+  .dropdown-panel {
+    transform: translateY(-8%) scale(0.98);
+    opacity: 0;
+    pointer-events: none;
+    transform-origin: var(--dropdown-origin, top right);
+    transition-property: transform, opacity;
+    transition-duration: 200ms;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .dropdown-panel[data-side="top"] {
+    transform: translateY(8%) scale(0.98);
+  }
+  .dropdown-panel[data-open="true"] {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+    pointer-events: auto;
+    transition-duration: 260ms;
+  }
+
   .pressable {
     transition: transform 0.14s cubic-bezier(0.19, 1, 0.22, 1);
   }
@@ -282,6 +301,13 @@
     }
     .pressable:hover:not(:disabled),
     .pressable:active:not(:disabled) {
+      transform: none;
+    }
+    .dropdown-panel {
+      transform: none;
+      transition: opacity 0.16s ease;
+    }
+    .dropdown-panel[data-open="true"] {
       transform: none;
     }
   }

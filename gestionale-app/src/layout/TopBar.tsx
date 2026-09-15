@@ -1,8 +1,6 @@
 import { Search, Bell, NotebookPen, MessageSquare, ChevronDown, LogOut } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
-import { dropdown } from '../motion/variants';
-import { useReducedMotion } from '../motion/useReducedMotion';
+import { DropdownPanel } from '../components/motion/DropdownPanel';
 import { Avatar } from '../components/ui/Avatar';
 import { useAuth } from '../app/AuthProvider';
 import { useNotifications } from '../features/notifications/NotificationProvider';
@@ -31,7 +29,6 @@ const SEARCH_TARGETS = [
 export function TopBar({ user, onLogout, onNavigate, onQuickAction }: TopBarProps) {
     const { user: authUser } = useAuth();
     const { unread } = useNotifications();
-    const reduced = useReducedMotion();
     const [menuOpen, setMenuOpen] = useState(false);
     const [query, setQuery] = useState('');
     const [searchOpen, setSearchOpen] = useState(false);
@@ -85,6 +82,8 @@ export function TopBar({ user, onLogout, onNavigate, onQuickAction }: TopBarProp
                     }}
                     placeholder="Vai a una sezione…"
                     className="search-pill pr-12"
+                    aria-expanded={searchOpen}
+                    aria-controls="topbar-search-menu"
                 />
                 <kbd
                     aria-hidden
@@ -95,36 +94,32 @@ export function TopBar({ user, onLogout, onNavigate, onQuickAction }: TopBarProp
                 >
                     /
                 </kbd>
-                <AnimatePresence>
-                    {searchOpen && (
-                        <motion.div
-                            key="search-menu"
-                            className="absolute left-0 right-0 top-full mt-2 bento-panel p-2 z-50 origin-top"
-                            variants={dropdown}
-                            initial="hidden"
-                            animate="show"
-                            exit="exit"
-                            transition={reduced ? { duration: 0 } : undefined}
+                <DropdownPanel
+                    open={searchOpen}
+                    triggerRef={searchRef}
+                    origin="top"
+                    align="stretch"
+                    role="listbox"
+                    id="topbar-search-menu"
+                    className="bento-panel p-2 overflow-y-auto"
+                >
+                    {results.length === 0 ? (
+                        <div className="px-3 py-2 text-xs text-ink-subtle">
+                            Nessun risultato.
+                        </div>
+                    ) : results.map(result => (
+                        <button
+                            key={result.view}
+                            type="button"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => goTo(result.view)}
+                            className="w-full text-left px-3 py-2 rounded-xl hover:bg-surface-inset/80 transition-colors"
                         >
-                            {results.length === 0 ? (
-                                <div className="px-3 py-2 text-xs text-ink-subtle">
-                                    Nessun risultato.
-                                </div>
-                            ) : results.map(result => (
-                                <button
-                                    key={result.view}
-                                    type="button"
-                                    onMouseDown={(e) => e.preventDefault()}
-                                    onClick={() => goTo(result.view)}
-                                    className="w-full text-left px-3 py-2 rounded-xl hover:bg-surface-inset/80 transition-colors"
-                                >
-                                    <span className="block text-sm font-medium text-ink">{result.label}</span>
-                                    <span className="block text-xs text-ink-subtle">{result.hint}</span>
-                                </button>
-                            ))}
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                            <span className="block text-sm font-medium text-ink">{result.label}</span>
+                            <span className="block text-xs text-ink-subtle">{result.hint}</span>
+                        </button>
+                    ))}
+                </DropdownPanel>
             </div>
 
             <div className="flex items-center gap-1 sm:gap-1.5 justify-center lg:justify-end flex-shrink-0">
@@ -162,7 +157,9 @@ export function TopBar({ user, onLogout, onNavigate, onQuickAction }: TopBarProp
                 <div className="relative" ref={ref}>
                     <button
                         onClick={() => setMenuOpen(o => !o)}
-                        className="flex items-center gap-2.5 pl-1.5 pr-2 py-1 rounded-xl hover:bg-surface-inset/60 transition"
+                        className="flex items-center gap-2.5 pl-1.5 pr-2 py-1 rounded-xl hover:bg-surface-inset/60 transition-colors"
+                        aria-expanded={menuOpen}
+                        aria-haspopup="menu"
                     >
                         <Avatar
                             name={user?.name || '?'}
@@ -179,17 +176,13 @@ export function TopBar({ user, onLogout, onNavigate, onQuickAction }: TopBarProp
                         <ChevronDown className="w-3.5 h-3.5 text-ink-subtle hidden sm:block" />
                     </button>
 
-                    <AnimatePresence>
-                    {menuOpen && (
-                        <motion.div
-                            key="user-menu"
-                            className="absolute right-0 mt-2 w-56 bento-panel p-2 z-50 origin-top-right"
-                            variants={dropdown}
-                            initial="hidden"
-                            animate="show"
-                            exit="exit"
-                            transition={reduced ? { duration: 0 } : undefined}
-                        >
+                    <DropdownPanel
+                        open={menuOpen}
+                        triggerRef={ref}
+                        origin="top-right"
+                        align="end"
+                        className="w-56 bento-panel p-2"
+                    >
                             <div className="px-3 py-2">
                                 <div className="text-sm font-medium text-ink">{user?.name}</div>
                                 <div className="text-xs text-ink-subtle">{user?.email}</div>
@@ -202,9 +195,7 @@ export function TopBar({ user, onLogout, onNavigate, onQuickAction }: TopBarProp
                                 <LogOut className="w-4 h-4" />
                                 Esci
                             </button>
-                        </motion.div>
-                    )}
-                    </AnimatePresence>
+                    </DropdownPanel>
                 </div>
             </div>
         </header>

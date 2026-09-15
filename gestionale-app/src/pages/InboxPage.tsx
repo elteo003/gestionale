@@ -8,6 +8,7 @@ import { ChatMessage } from '../components/chat/ChatMessage';
 import { CiteDocument, CiteQuote } from '../components/chat/CitationBlocks';
 import { DocumentPicker } from '../components/chat/DocumentPicker';
 import { MentionPicker } from '../components/chat/MentionPicker';
+import { DropdownPanel } from '../components/motion/DropdownPanel';
 import {
     filterMentionCandidates,
     insertMention,
@@ -47,6 +48,8 @@ export function InboxPage() {
     const activeChatIdRef = useRef<string | null>(null);
     const scrollerRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
+    const composerRef = useRef<HTMLDivElement>(null);
+    const mentionWrapRef = useRef<HTMLDivElement>(null);
 
     messagesRef.current = messages;
     activeChatIdRef.current = activeChatId;
@@ -329,8 +332,16 @@ export function InboxPage() {
                         )}
                     </div>
                     {activeChatId && (
-                        <div className="relative p-3 border-t border-line/40 space-y-2">
-                            {pickerOpen && (
+                        <div ref={composerRef} className="relative p-3 border-t border-line/40 space-y-2">
+                            <DropdownPanel
+                                open={pickerOpen}
+                                triggerRef={composerRef}
+                                origin="bottom"
+                                align="stretch"
+                                side="top"
+                                role="dialog"
+                                className="bento-panel p-2 overflow-y-auto"
+                            >
                                 <DocumentPicker
                                     chatId={activeChatId}
                                     onPick={(doc) => {
@@ -339,7 +350,7 @@ export function InboxPage() {
                                     }}
                                     onClose={() => setPickerOpen(false)}
                                 />
-                            )}
+                            </DropdownPanel>
                             {replyTo && (
                                 <div className="flex items-start justify-between gap-2">
                                     <CiteQuote
@@ -386,15 +397,23 @@ export function InboxPage() {
                                 >
                                     <FileText className="w-4 h-4" />
                                 </button>
-                                <div className="relative flex-1 min-w-0">
-                                    {mention && (
+                                <div ref={mentionWrapRef} className="relative flex-1 min-w-0">
+                                    <DropdownPanel
+                                        open={!!mention}
+                                        triggerRef={mentionWrapRef}
+                                        origin="bottom"
+                                        align="stretch"
+                                        side="top"
+                                        role="listbox"
+                                        className="bento-panel p-1.5 overflow-y-auto"
+                                    >
                                         <MentionPicker
                                             people={mentionHits}
                                             activeIndex={mentionIndex}
                                             onHover={setMentionIndex}
                                             onPick={pickMention}
                                         />
-                                    )}
+                                    </DropdownPanel>
                                     <input
                                         ref={inputRef}
                                         className="input w-full"

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Client, Contract, Project } from '../../types/models';
+import { DropdownPanel } from '../../components/motion/DropdownPanel';
 
 export const AREA_OPTIONS = ['CDA', 'Marketing', 'IT', 'Commerciale'];
 export const CLIENT_STATUS_OPTIONS = [
@@ -166,8 +167,15 @@ function ClientCombobox({
                     onFocus={() => setOpen(true)}
                     placeholder="Nome cliente…" autoComplete="off"
                 />
-                {open && (filtered.length > 0 || (value.trim() && !exactMatch)) && (
-                    <ul className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto rounded-lg border border-line/60 bg-surface-inset shadow-lg">
+                <DropdownPanel
+                    open={open && (filtered.length > 0 || Boolean(value.trim() && !exactMatch))}
+                    triggerRef={wrapRef}
+                    origin="top"
+                    align="stretch"
+                    role="listbox"
+                    className="max-h-60 overflow-y-auto rounded-lg border border-line/60 bg-surface-inset shadow-lg"
+                >
+                    <ul>
                         {filtered.map((c, i) => (
                             <li key={c.id} onMouseDown={e => { e.preventDefault(); pickClient(c); }}
                                 className={`px-3 py-1.5 text-sm cursor-pointer ${i === highlight ? 'bg-brand-600/15 text-ink' : 'text-ink-muted'}`}>
@@ -175,7 +183,7 @@ function ClientCombobox({
                             </li>
                         ))}
                     </ul>
-                )}
+                </DropdownPanel>
             </div>
         </div>
     );

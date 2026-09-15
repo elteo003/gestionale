@@ -46,4 +46,4 @@ gestionale-app/playwright-report/
 desktop/release/
 desktop/renderer/
 !desktop/build/
-!desktop/build/icon.png
+!desktop/build/**

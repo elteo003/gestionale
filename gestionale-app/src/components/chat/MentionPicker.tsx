@@ -11,15 +11,13 @@ interface MentionPickerProps {
 export function MentionPicker({ people, activeIndex, onHover, onPick }: MentionPickerProps) {
     if (!people.length) {
         return (
-            <div className="absolute bottom-full left-0 right-0 mb-2 bento-panel p-2 z-20">
-                <p className="px-2 py-1.5 text-[11px] text-ink-subtle">Nessun risultato.</p>
-            </div>
+            <p className="px-2 py-1.5 text-[11px] text-ink-subtle">Nessun risultato.</p>
         );
     }
 
     return (
         <div
-            className="absolute bottom-full left-0 right-0 mb-2 bento-panel p-1.5 z-20 max-h-56 overflow-y-auto scrollbar-thin"
+            className="max-h-56 overflow-y-auto scrollbar-thin"
             role="listbox"
             aria-label="Persone da citare"
         >

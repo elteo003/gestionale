@@ -60,19 +60,3 @@ export const listItem: Variants = {
         transition: { duration: DURATION.fast, ease: EASE_OUT },
     },
 };
-
-export const dropdown: Variants = {
-    hidden: { opacity: 0, y: -4, scale: 0.98 },
-    show: {
-        opacity: 1,
-        y: 0,
-        scale: 1,
-        transition: { duration: DURATION.fast, ease: EASE_OUT },
-    },
-    exit: {
-        opacity: 0,
-        y: -4,
-        scale: 0.98,
-        transition: { duration: DURATION.instant, ease: EASE_OUT },
-    },
-};

@@ -6,10 +6,9 @@ import {
 } from '@dnd-kit/core';
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { AnimatePresence, motion } from 'framer-motion';
 import { Plus, Filter, Share2, MoreHorizontal, ArrowDownWideNarrow } from 'lucide-react';
 import { TaskCard } from './TaskCard';
-import { dropdown } from '../../motion/variants';
+import { DropdownPanel } from '../motion/DropdownPanel';
 import { openNotice } from '../../utils/notice';
 import type { Task, BoardColumn } from '../../types/models';
 
@@ -223,19 +222,18 @@ function KanbanColumn({
                             className="icon-btn !w-7 !h-7"
                             onClick={() => setMenuOpen(o => !o)}
                             aria-label="Opzioni colonna"
+                            aria-expanded={menuOpen}
+                            aria-haspopup="menu"
                         >
                             <MoreHorizontal className="w-3.5 h-3.5" />
                         </button>
-                        <AnimatePresence>
-                            {menuOpen && (
-                                <motion.div
-                                    key="col-menu"
-                                    className="absolute right-0 top-full mt-1.5 w-52 bento-panel p-1 z-50 origin-top-right"
-                                    variants={dropdown}
-                                    initial="hidden"
-                                    animate="show"
-                                    exit="exit"
-                                >
+                        <DropdownPanel
+                            open={menuOpen}
+                            triggerRef={menuRef}
+                            origin="top-right"
+                            align="end"
+                            className="w-52 bento-panel p-1"
+                        >
                                     <button
                                         type="button"
                                         onClick={() => {
@@ -260,9 +258,7 @@ function KanbanColumn({
                                         <Plus className="w-3.5 h-3.5 text-ink-subtle" />
                                         Aggiungi task
                                     </button>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
+                        </DropdownPanel>
                     </div>
                 </div>
             </div>
