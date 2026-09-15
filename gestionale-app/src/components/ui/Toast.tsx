@@ -50,7 +50,7 @@ export const Toast: React.FC<ToastProps> = ({
 
   const handleClose = () => {
     setIsLeaving(true);
-    setTimeout(() => onClose(id), 280);
+    setTimeout(() => onClose(id), 180);
   };
 
   const Icon = iconMap[type];
@@ -63,7 +63,7 @@ export const Toast: React.FC<ToastProps> = ({
       className={cn(
         'flex items-start gap-3 p-3.5 rounded-2xl border shadow-panel backdrop-blur-xl',
         'min-w-[280px] max-w-[420px]',
-        'transition-all duration-280 ease-[cubic-bezier(0.22,1,0.36,1)]',
+        'transition-[transform,opacity] duration-[180ms] ease-[cubic-bezier(0.19,1,0.22,1)]',
         variantStyles[type],
         isVisible && !isLeaving
           ? 'translate-y-0 opacity-100 scale-100'

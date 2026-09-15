@@ -20,5 +20,7 @@ export const preferencesSchema = z.object({
         'chat.message': z.boolean().optional(),
         'task.assigned': z.boolean().optional(),
         'event.invited': z.boolean().optional(),
+        'chat.mentioned': z.boolean().optional(),
+        'task.updated': z.boolean().optional(),
     }),
 });

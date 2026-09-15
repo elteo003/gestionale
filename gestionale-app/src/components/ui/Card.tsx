@@ -66,7 +66,7 @@ export const Card: FC<CardProps> = ({
                 'h-full',
                 variantStyles[variant] || variantStyles.outlined,
                 paddingMap[padding],
-                hover && 'transition-shadow hover:shadow-glow-brand cursor-pointer',
+                hover && 'hover:border-brand-600/30 cursor-pointer',
                 className,
             )}
             {...rest}

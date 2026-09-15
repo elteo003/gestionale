@@ -37,3 +37,11 @@ coverage/
 # Vite
 **/.vite/
 gestionale-app/node_modules/.vite/
+
+# Playwright
+gestionale-app/test-results/
+gestionale-app/playwright-report/
+
+# Electron
+desktop/release/
+desktop/renderer/

@@ -1,7 +1,9 @@
 import React, { useEffect, useRef } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { X } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { Button } from './Button';
+import { scaleIn } from '../../motion/variants';
 
 export interface ModalProps {
   isOpen: boolean;
@@ -118,14 +120,19 @@ export const Modal: React.FC<ModalProps> = ({
     };
   }, [isOpen]);
 
-  if (!isOpen) return null;
-
   return (
-    <div
+    <AnimatePresence>
+      {isOpen && (
+    <motion.div
+      key="ui-modal"
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby={title ? 'modal-title' : undefined}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.15, ease: [0.19, 1, 0.22, 1] }}
     >
       {/* Overlay */}
       <div
@@ -135,16 +142,19 @@ export const Modal: React.FC<ModalProps> = ({
       />
 
       {/* Modal Content */}
-      <div
+      <motion.div
         ref={modalRef}
         className={cn(
           'relative bg-white dark:bg-neutral-800 rounded-xl shadow-2xl',
           'w-full',
           sizeStyles[size],
           'max-h-[90vh] flex flex-col',
-          'animate-fadeIn',
           className
         )}
+        variants={scaleIn}
+        initial="hidden"
+        animate="show"
+        exit="exit"
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
       >
@@ -179,8 +189,10 @@ export const Modal: React.FC<ModalProps> = ({
             {footer}
           </div>
         )}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
 

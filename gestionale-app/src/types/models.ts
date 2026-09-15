@@ -184,3 +184,22 @@ export interface Message {
     citation?: MessageCitation | null;
     mentions?: MessageMention[];
 }
+
+export interface AppNotification {
+    id: string;
+    type: string;
+    title: string;
+    body?: string | null;
+    payload?: {
+        url?: string;
+        chatId?: string;
+        taskId?: string;
+        eventId?: string;
+        tag?: string;
+        isCall?: boolean;
+    } | null;
+    actorId?: string | null;
+    collapseKey?: string | null;
+    readAt?: string | null;
+    createdAt: string;
+}

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { Bell, HelpCircle, Settings } from 'lucide-react';
+import { HelpCircle, Settings } from 'lucide-react';
 import { AppShell } from '../layout/AppShell';
 import { UtilityView } from '../components/UtilityView';
 import { useAuth } from './AuthProvider';
@@ -85,20 +85,7 @@ export function AuthenticatedLayout() {
     const utilityOutlet = useMemo(() => {
         switch (activeView) {
             case 'notifiche':
-                return (
-                    <UtilityView
-                        icon={Bell}
-                        title="Notifiche"
-                        subtitle="Aggiornamenti e reminder."
-                        primaryLabel="Dashboard"
-                        onPrimary={() => navigate('/dashboard')}
-                        cards={[
-                            ['Task', 'Spostamenti kanban e assegnazioni.'],
-                            ['Documenti', 'Stato fatture e contratti.'],
-                            ['Calendario', 'Eventi e RSVP.'],
-                        ]}
-                    />
-                );
+                return null;
             case 'help':
                 return (
                     <UtilityView

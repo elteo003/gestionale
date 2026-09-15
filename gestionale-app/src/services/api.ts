@@ -472,3 +472,30 @@ export const messagesAPI = {
     createChat: (data: { name?: string; projectId?: string; memberIds?: string[] }) =>
         apiCall('/api/chats', { method: 'POST', body: JSON.stringify(data) }),
 };
+
+export const notificationsAPI = {
+    vapidPublicKey: () => apiCall('/api/push/vapid-public-key'),
+    subscribePush: (body: {
+        platform: 'web' | 'desktop';
+        endpoint: string;
+        expirationTime?: number | null;
+        keys: { p256dh: string; auth: string };
+    }) => apiCall('/api/push/subscribe', { method: 'POST', body: JSON.stringify(body) }),
+    unsubscribePush: (endpoint: string) =>
+        apiCall('/api/push/subscribe', {
+            method: 'DELETE',
+            body: JSON.stringify({ endpoint }),
+        }),
+    list: (opts?: { unread?: boolean; limit?: number }) => {
+        const q = new URLSearchParams();
+        if (opts?.unread) q.set('unread', '1');
+        if (opts?.limit) q.set('limit', String(opts.limit));
+        const qs = q.toString();
+        return apiCall(`/api/notifications${qs ? `?${qs}` : ''}`);
+    },
+    unreadCount: () => apiCall('/api/notifications/unread-count'),
+    markRead: (id: string) =>
+        apiCall(`/api/notifications/${id}/read`, { method: 'PATCH' }),
+    markAllRead: () =>
+        apiCall('/api/notifications/read-all', { method: 'POST' }),
+};

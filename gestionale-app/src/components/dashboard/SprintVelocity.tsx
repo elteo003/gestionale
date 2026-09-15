@@ -66,7 +66,7 @@ export function SprintVelocity({ sprint, history = [] }: SprintVelocityProps) {
                         strokeDasharray={circ}
                         initial={false}
                         animate={{ strokeDashoffset: offset }}
-                        transition={reduced ? { duration: 0 } : TRANSITION.slow}
+                        transition={reduced ? { duration: 0 } : TRANSITION.fast}
                     />
                 </svg>
                 <div className="absolute inset-x-0 bottom-1 flex flex-col items-center pointer-events-none">
@@ -84,9 +84,9 @@ export function SprintVelocity({ sprint, history = [] }: SprintVelocityProps) {
                             <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
                                 <motion.div
                                     className="w-full rounded-full bg-brand-700/80 origin-bottom"
-                                    initial={reduced ? false : { scaleY: 0 }}
-                                    animate={{ scaleY: 1 }}
-                                    transition={{ ...TRANSITION.normal, delay: i * 0.04 }}
+                                    initial={reduced ? false : { transform: 'scaleY(0)' }}
+                                    animate={{ transform: 'scaleY(1)' }}
+                                    transition={{ ...TRANSITION.fast, delay: reduced ? 0 : i * 0.03 }}
                                     style={{ height: `${barH}%` }}
                                 />
                                 <span className="text-[9px] text-ink-subtle uppercase font-medium">{h.label}</span>

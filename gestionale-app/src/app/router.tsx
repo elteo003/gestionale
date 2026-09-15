@@ -13,6 +13,7 @@ const BillingPage = lazy(() => import('../pages/BillingPage').then(m => ({ defau
 const CalendarPage = lazy(() => import('../pages/CalendarPage').then(m => ({ default: m.CalendarPage })));
 const MyTasksPage = lazy(() => import('../pages/MyTasksPage').then(m => ({ default: m.MyTasksPage })));
 const InboxPage = lazy(() => import('../pages/InboxPage').then(m => ({ default: m.InboxPage })));
+const NotificationsPage = lazy(() => import('../pages/NotificationsPage').then(m => ({ default: m.NotificationsPage })));
 const ReportsPage = lazy(() => import('../pages/ReportsPage').then(m => ({ default: m.ReportsPage })));
 const AdminPage = lazy(() => import('../pages/AdminPage').then(m => ({ default: m.AdminPage })));
 const Recruiting = lazy(() => import('../components/Recruiting'));
@@ -73,7 +74,7 @@ export function AppRoutes() {
                 <Route path="tasks" element={<Guard perm="viewMyTasks"><Lazy><MyTasksPage /></Lazy></Guard>} />
                 <Route path="inbox" element={<Guard perm="viewInbox"><Lazy><InboxPage /></Lazy></Guard>} />
                 <Route path="reports" element={<Guard perm="viewReports"><Lazy><ReportsPage /></Lazy></Guard>} />
-                <Route path="notifiche" element={<></>} />
+                <Route path="notifiche" element={<Lazy><NotificationsPage /></Lazy>} />
                 <Route path="help" element={<></>} />
                 <Route path="settings" element={<></>} />
                 <Route path="admin" element={<Guard perm="manageUsers"><Lazy><AdminPage /></Lazy></Guard>} />

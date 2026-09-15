@@ -1,5 +1,3 @@
-import { motion } from 'framer-motion';
-import { TRANSITION } from '../../motion/presets';
 import { useReducedMotion } from '../../motion/useReducedMotion';
 
 type Tone = 'brand' | 'violet' | 'cyan' | 'pink' | 'emerald' | 'amber';
@@ -23,10 +21,23 @@ const toneClass: Record<Tone, string> = {
 
 const heights = { thin: 'h-1', normal: 'h-1.5', thick: 'h-2.5' };
 
+export function ProgressFill({ pct, className = '' }: { pct: number; className?: string }) {
+    const reduced = useReducedMotion();
+    const scale = Math.max(0, Math.min(1, pct / 100));
+    return (
+        <div
+            className={`h-full progress-fill ${className}`.trim()}
+            style={{
+                transform: `scaleX(${scale})`,
+                transition: reduced ? 'none' : undefined,
+            }}
+        />
+    );
+}
+
 export function ProgressBar({
     value, max = 100, tone = 'brand', showLabel = false, height = 'normal',
 }: ProgressBarProps) {
-    const reduced = useReducedMotion();
     const pct = Math.max(0, Math.min(100, (value / max) * 100));
 
     return (
@@ -37,12 +48,10 @@ export function ProgressBar({
                     <span className="text-xs font-medium text-ink">{Math.round(pct)}%</span>
                 </div>
             )}
-            <div className={`progress-glass w-full ${heights[height]}`}>
-                <motion.div
+            <div className={`progress-glass w-full overflow-hidden ${heights[height]}`}>
+                <ProgressFill
+                    pct={pct}
                     className={`${heights[height]} ${toneClass[tone]} progress-glass-fill rounded-full`}
-                    initial={false}
-                    animate={{ width: `${pct}%` }}
-                    transition={reduced ? { duration: 0 } : TRANSITION.slow}
                 />
             </div>
         </div>

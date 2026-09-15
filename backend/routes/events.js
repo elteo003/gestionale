@@ -417,6 +417,7 @@ router.post('/', requireNotSocio, async (req, res) => {
                 startTime: first.startTime,
                 actorId: req.user.userId,
                 recipientIds: first.participants.map((p) => p.userId),
+                isCall: Boolean(first.isCall),
             }));
         }
         

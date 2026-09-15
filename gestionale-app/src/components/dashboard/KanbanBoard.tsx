@@ -229,7 +229,8 @@ function KanbanColumn({
                         <AnimatePresence>
                             {menuOpen && (
                                 <motion.div
-                                    className="absolute right-0 top-full mt-1.5 w-52 bento-panel p-1 z-50"
+                                    key="col-menu"
+                                    className="absolute right-0 top-full mt-1.5 w-52 bento-panel p-1 z-50 origin-top-right"
                                     variants={dropdown}
                                     initial="hidden"
                                     animate="show"

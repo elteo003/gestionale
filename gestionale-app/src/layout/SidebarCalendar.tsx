@@ -1,9 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { LayoutGroup, motion } from 'framer-motion';
 import { CalendarDays, ChevronRight, Clock } from 'lucide-react';
 import { eventsAPI } from '../services/api';
-import { SPRING } from '../motion/presets';
-import { useReducedMotion } from '../motion/useReducedMotion';
 
 interface SidebarCalendarProps {
     onOpenCalendar?: () => void;
@@ -57,7 +54,6 @@ function mockUpcoming(): SidebarEvent[] {
 }
 
 export function SidebarCalendar({ onOpenCalendar, onQuickAction }: SidebarCalendarProps) {
-    const reduced = useReducedMotion();
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [events, setEvents] = useState<SidebarEvent[]>([]);
 
@@ -126,8 +122,7 @@ export function SidebarCalendar({ onOpenCalendar, onQuickAction }: SidebarCalend
                 {monthLabel}
             </p>
 
-            <LayoutGroup id="sidebar-cal">
-                <div className="grid grid-cols-7 gap-0.5 mb-2">
+            <div className="grid grid-cols-7 gap-0.5 mb-2">
                     {DAY_LABELS.map(l => (
                         <span
                             key={l}
@@ -147,19 +142,9 @@ export function SidebarCalendar({ onOpenCalendar, onQuickAction }: SidebarCalend
                                 className={`relative aspect-square flex items-center justify-center
                                             rounded-md text-[11px] font-semibold tabular-nums
                                             ${selected
-                                                ? 'text-white'
+                                                ? 'text-white bg-grad-brand shadow-glow-brand'
                                                 : 'text-ink-muted hover:text-ink hover:bg-surface-raised/40'}`}
                             >
-                                {selected && !reduced && (
-                                    <motion.span
-                                        layoutId="sidebar-cal-pill"
-                                        className="absolute inset-0 rounded-md bg-grad-brand shadow-glow-brand"
-                                        transition={SPRING.snap}
-                                    />
-                                )}
-                                {selected && reduced && (
-                                    <span className="absolute inset-0 rounded-md bg-grad-brand" />
-                                )}
                                 <span className="relative z-10">{d.getDate()}</span>
                                 {hasEvents && !selected && (
                                     <span
@@ -171,7 +156,6 @@ export function SidebarCalendar({ onOpenCalendar, onQuickAction }: SidebarCalend
                         );
                     })}
                 </div>
-            </LayoutGroup>
 
             {upcoming.length > 0 && (
                 <div className="mt-2 pt-2 border-t border-line/30 space-y-1">

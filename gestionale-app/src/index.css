@@ -77,25 +77,25 @@
   .icon-btn {
     @apply inline-flex items-center justify-center w-9 h-9 rounded-xl text-ink-muted
            hover:bg-surface-inset hover:text-ink transition-colors;
-    transition-property: color, background-color, border-color, transform, box-shadow;
+    transition-property: color, background-color, border-color, transform;
     transition-duration: 160ms;
-    transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+    transition-timing-function: cubic-bezier(0.19, 1, 0.22, 1);
   }
   .icon-btn:active {
-    transform: scale(0.96);
+    transform: scale(0.97);
   }
   .nav-rail-btn {
     @apply relative inline-flex items-center justify-center w-9 h-9 rounded-xl text-ink-subtle
            hover:text-ink transition-colors;
-    transition-property: color, background-color, border-color, transform, box-shadow;
+    transition-property: color, background-color, border-color, transform;
     transition-duration: 160ms;
-    transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+    transition-timing-function: cubic-bezier(0.19, 1, 0.22, 1);
   }
   .nav-rail-btn:hover:not([data-active="true"]) {
     @apply bg-surface-inset/60;
   }
   .nav-rail-btn:active {
-    transform: scale(0.94);
+    transform: scale(0.97);
   }
   .nav-rail-btn[data-active="true"] {
     @apply text-white;
@@ -104,14 +104,14 @@
     @apply w-full bg-surface-inset border border-line/70 rounded-xl px-3.5 py-2.5
            text-sm text-ink placeholder:text-ink-subtle
            focus:outline-none focus:ring-2 focus:ring-brand-600/35 focus:border-brand-600/50
-           transition;
+           transition-colors;
   }
   .btn {
     @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl
-           text-sm font-medium transition disabled:opacity-50;
-    transition-property: color, background-color, border-color, transform, box-shadow, filter;
+           text-sm font-medium disabled:opacity-50;
+    transition-property: color, background-color, border-color, transform;
     transition-duration: 160ms;
-    transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+    transition-timing-function: cubic-bezier(0.19, 1, 0.22, 1);
   }
   .btn:active:not(:disabled) {
     transform: scale(0.97);
@@ -195,8 +195,8 @@
     @apply rounded-xl min-h-[14rem] lg:min-h-[min(52vh,30rem)] p-1.5;
     background: rgb(var(--surface-inset) / 0.5);
     border: 1px solid rgb(var(--line) / 0.5);
-    transition: border-color 0.18s cubic-bezier(0.23, 1, 0.32, 1),
-                background-color 0.18s cubic-bezier(0.23, 1, 0.32, 1);
+    transition: border-color 0.18s cubic-bezier(0.19, 1, 0.22, 1),
+                background-color 0.18s cubic-bezier(0.19, 1, 0.22, 1);
   }
 
   .kanban-well--over {
@@ -207,7 +207,7 @@
   .search-pill {
     @apply w-full rounded-full border border-line/60 text-sm text-ink
            placeholder:text-ink-subtle py-2.5 pl-10 pr-4 bg-surface-inset/80;
-    transition: border-color 0.18s ease, box-shadow 0.18s ease;
+    transition: border-color 0.18s cubic-bezier(0.19, 1, 0.22, 1);
   }
 
   .search-pill:focus {
@@ -227,24 +227,61 @@
   .scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
 
   .page-enter {
-    animation: page-enter 0.22s cubic-bezier(0.23, 1, 0.32, 1) backwards;
+    animation: page-enter 0.18s cubic-bezier(0.19, 1, 0.22, 1) backwards;
   }
 
   @keyframes page-enter {
-    from {
-      opacity: 0;
-      transform: translateY(8px);
-    }
-    to {
-      opacity: 1;
-      transform: none;
-    }
+    from { opacity: 0; }
+    to { opacity: 1; }
   }
 
   @media (prefers-reduced-motion: reduce) {
     .page-enter {
       animation: none;
       opacity: 1;
+    }
+  }
+
+  .rail-active-pill {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 2.25rem;
+    border-radius: 0.75rem;
+    pointer-events: none;
+    transition: transform 0.18s cubic-bezier(0.19, 1, 0.22, 1);
+  }
+
+  .progress-fill {
+    transform-origin: left center;
+    transition: transform 0.18s cubic-bezier(0.19, 1, 0.22, 1);
+  }
+
+  .pressable {
+    transition: transform 0.14s cubic-bezier(0.19, 1, 0.22, 1);
+  }
+  .pressable:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .pressable:hover:not(:disabled) {
+      transform: scale(1.02);
+    }
+    .pressable:hover:not(:disabled):active {
+      transform: scale(0.97);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rail-active-pill,
+    .progress-fill,
+    .pressable {
+      transition: none;
+    }
+    .pressable:hover:not(:disabled),
+    .pressable:active:not(:disabled) {
       transform: none;
     }
   }
@@ -252,7 +289,7 @@
 
 @layer utilities {
   .spin-fast {
-    animation: spin 0.7s linear infinite;
+    animation: spin 0.5s linear infinite;
   }
 
   @media (prefers-reduced-motion: reduce) {

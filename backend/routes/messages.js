@@ -372,6 +372,7 @@ router.post('/chats/:id/messages', async (req, res) => {
             actorId: req.user.userId,
             actorName: message.senderName,
             body: message.body || message.citation?.title || 'Nuovo messaggio',
+            mentionIds,
         }));
         scheduleNotify(logChatActivity({
             actorId: req.user.userId,

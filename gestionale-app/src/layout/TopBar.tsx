@@ -5,6 +5,7 @@ import { dropdown } from '../motion/variants';
 import { useReducedMotion } from '../motion/useReducedMotion';
 import { Avatar } from '../components/ui/Avatar';
 import { useAuth } from '../app/AuthProvider';
+import { useNotifications } from '../features/notifications/NotificationProvider';
 import { canAccessView } from '../lib/permissions';
 import type { User } from '../types/models';
 
@@ -29,6 +30,7 @@ const SEARCH_TARGETS = [
 
 export function TopBar({ user, onLogout, onNavigate, onQuickAction }: TopBarProps) {
     const { user: authUser } = useAuth();
+    const { unread } = useNotifications();
     const reduced = useReducedMotion();
     const [menuOpen, setMenuOpen] = useState(false);
     const [query, setQuery] = useState('');
@@ -96,7 +98,8 @@ export function TopBar({ user, onLogout, onNavigate, onQuickAction }: TopBarProp
                 <AnimatePresence>
                     {searchOpen && (
                         <motion.div
-                            className="absolute left-0 right-0 top-full mt-2 bento-panel p-2 z-50"
+                            key="search-menu"
+                            className="absolute left-0 right-0 top-full mt-2 bento-panel p-2 z-50 origin-top"
                             variants={dropdown}
                             initial="hidden"
                             animate="show"
@@ -134,11 +137,17 @@ export function TopBar({ user, onLogout, onNavigate, onQuickAction }: TopBarProp
                 </button>
                 <button
                     className="icon-btn relative"
-                    aria-label="Notifiche"
+                    aria-label={unread ? `Notifiche, ${unread} non lette` : 'Notifiche'}
                     onClick={() => onNavigate?.('notifiche')}
                 >
                     <Bell className="w-4 h-4" />
-                    <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-brand-500 ring-2 ring-surface-raised" />
+                    {unread > 0 && (
+                        <span className="absolute -top-0.5 -right-0.5 min-w-[1.05rem] h-[1.05rem] px-1
+                                         rounded-full bg-brand-500 text-[9px] font-semibold text-white
+                                         flex items-center justify-center ring-2 ring-surface-raised">
+                            {unread > 9 ? '9+' : unread}
+                        </span>
+                    )}
                 </button>
                 {canAccessView(authUser, 'inbox') && (
                     <button
@@ -173,7 +182,8 @@ export function TopBar({ user, onLogout, onNavigate, onQuickAction }: TopBarProp
                     <AnimatePresence>
                     {menuOpen && (
                         <motion.div
-                            className="absolute right-0 mt-2 w-56 bento-panel p-2 z-50"
+                            key="user-menu"
+                            className="absolute right-0 mt-2 w-56 bento-panel p-2 z-50 origin-top-right"
                             variants={dropdown}
                             initial="hidden"
                             animate="show"

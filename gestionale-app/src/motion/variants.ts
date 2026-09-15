@@ -2,15 +2,13 @@ import type { Variants } from 'framer-motion';
 import { DURATION, EASE_OUT, STAGGER } from './presets';
 
 export const fadeUp: Variants = {
-    hidden: { opacity: 0, y: 8 },
+    hidden: { opacity: 0 },
     show: {
         opacity: 1,
-        y: 0,
         transition: { duration: DURATION.normal, ease: EASE_OUT },
     },
     exit: {
         opacity: 0,
-        y: 6,
         transition: { duration: DURATION.fast, ease: EASE_OUT },
     },
 };
@@ -22,17 +20,15 @@ export const fade: Variants = {
 };
 
 export const scaleIn: Variants = {
-    hidden: { opacity: 0, scale: 0.96, y: 6 },
+    hidden: { opacity: 0, scale: 0.96 },
     show: {
         opacity: 1,
         scale: 1,
-        y: 0,
         transition: { duration: DURATION.normal, ease: EASE_OUT },
     },
     exit: {
         opacity: 0,
         scale: 0.98,
-        y: 4,
         transition: { duration: DURATION.fast, ease: EASE_OUT },
     },
 };
@@ -42,7 +38,7 @@ export const bentoStagger: Variants = {
     show: {
         transition: {
             staggerChildren: STAGGER.normal,
-            delayChildren: 0.04,
+            delayChildren: 0,
         },
     },
 };
@@ -52,16 +48,15 @@ export const listStagger: Variants = {
     show: {
         transition: {
             staggerChildren: STAGGER.tight,
-            delayChildren: 0.02,
+            delayChildren: 0,
         },
     },
 };
 
 export const listItem: Variants = {
-    hidden: { opacity: 0, x: -6 },
+    hidden: { opacity: 0 },
     show: {
         opacity: 1,
-        x: 0,
         transition: { duration: DURATION.fast, ease: EASE_OUT },
     },
 };

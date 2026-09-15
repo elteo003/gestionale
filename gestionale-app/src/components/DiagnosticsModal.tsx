@@ -131,7 +131,7 @@ export default function DiagnosticsModal({ type, healthStatus, onClose }: Diagno
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fadeIn">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in">
             <div className="bg-white rounded-lg shadow-2xl w-full max-w-4xl m-4 max-h-[90vh] overflow-y-auto">
                 {/* Header */}
                 <div className="sticky top-0 bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-6 rounded-t-lg">
@@ -163,7 +163,7 @@ export default function DiagnosticsModal({ type, healthStatus, onClose }: Diagno
                         <div className="flex items-center justify-between">
                             {/* Frontend */}
                             <div className="flex flex-col items-center flex-1">
-                                <div className={`w-16 h-16 rounded-full flex items-center justify-center border-4 transition-all ${getStepColor(connectionFlow.frontend)}`}>
+                                <div className={`w-16 h-16 rounded-full flex items-center justify-center border-4 transition-colors ${getStepColor(connectionFlow.frontend)}`}>
                                     {getStepIcon(connectionFlow.frontend)}
                                 </div>
                                 <p className="mt-2 text-sm font-medium text-gray-700">Frontend</p>
@@ -172,7 +172,7 @@ export default function DiagnosticsModal({ type, healthStatus, onClose }: Diagno
 
                             {/* Arrow 1 */}
                             <div className="flex-1 flex items-center justify-center px-4 relative">
-                                <div className={`w-full h-1 rounded-full transition-all ${
+                                <div className={`w-full h-1 rounded-full transition-colors ${
                                     connectionFlow.frontend === 'success' 
                                         ? 'bg-green-400 animate-pulse' 
                                         : connectionFlow.frontend === 'error'
@@ -192,7 +192,7 @@ export default function DiagnosticsModal({ type, healthStatus, onClose }: Diagno
 
                             {/* Backend */}
                             <div className="flex flex-col items-center flex-1">
-                                <div className={`w-16 h-16 rounded-full flex items-center justify-center border-4 transition-all ${getStepColor(connectionFlow.backend)}`}>
+                                <div className={`w-16 h-16 rounded-full flex items-center justify-center border-4 transition-colors ${getStepColor(connectionFlow.backend)}`}>
                                     {getStepIcon(connectionFlow.backend)}
                                 </div>
                                 <p className="mt-2 text-sm font-medium text-gray-700">Backend</p>
@@ -203,7 +203,7 @@ export default function DiagnosticsModal({ type, healthStatus, onClose }: Diagno
                             {type === 'db' && (
                                 <>
                                     <div className="flex-1 flex items-center justify-center px-4 relative">
-                                        <div className={`w-full h-1 rounded-full transition-all ${
+                                        <div className={`w-full h-1 rounded-full transition-colors ${
                                             connectionFlow.backend === 'success' && connectionFlow.database === 'success'
                                                 ? 'bg-green-400 animate-pulse' 
                                                 : connectionFlow.database === 'error'
@@ -223,7 +223,7 @@ export default function DiagnosticsModal({ type, healthStatus, onClose }: Diagno
 
                                     {/* Database */}
                                     <div className="flex flex-col items-center flex-1">
-                                        <div className={`w-16 h-16 rounded-full flex items-center justify-center border-4 transition-all ${getStepColor(connectionFlow.database)}`}>
+                                        <div className={`w-16 h-16 rounded-full flex items-center justify-center border-4 transition-colors ${getStepColor(connectionFlow.database)}`}>
                                             {getStepIcon(connectionFlow.database)}
                                         </div>
                                         <p className="mt-2 text-sm font-medium text-gray-700">Database</p>
@@ -297,7 +297,7 @@ export default function DiagnosticsModal({ type, healthStatus, onClose }: Diagno
                                 {testResults.steps.map((step: any, index: number) => (
                                     <div
                                         key={index}
-                                        className={`p-4 rounded-lg border-2 transition-all ${
+                                        className={`p-4 rounded-lg border-2 transition-colors ${
                                             step.status === 'success'
                                                 ? 'bg-green-50 border-green-200'
                                                 : 'bg-red-50 border-red-200'

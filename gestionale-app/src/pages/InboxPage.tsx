@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, useSearchParams } from 'react-router-dom';
 import { FileText, MessageSquare, Plus, Send, X } from 'lucide-react';
 import { messagesAPI, usersAPI } from '../services/api';
 import { useChatSocket } from '../features/inbox/useChatSocket';
@@ -41,6 +41,8 @@ export function InboxPage() {
     const [pendingMentions, setPendingMentions] = useState<User[]>([]);
     const [mentionIndex, setMentionIndex] = useState(0);
     const [mentionDismissedStart, setMentionDismissedStart] = useState<number | null>(null);
+    const [searchParams] = useSearchParams();
+    const chatFromUrl = searchParams.get('chat');
     const messagesRef = useRef<Message[]>([]);
     const activeChatIdRef = useRef<string | null>(null);
     const scrollerRef = useRef<HTMLDivElement>(null);
@@ -98,6 +100,11 @@ export function InboxPage() {
             .catch((e: Error) => setError(e.message))
             .finally(() => setLoading(false));
     }, []);
+
+    useEffect(() => {
+        if (!chatFromUrl) return;
+        if (chats.some((c) => c.id === chatFromUrl)) setActiveChatId(chatFromUrl);
+    }, [chatFromUrl, chats]);
 
     useEffect(() => {
         if (!activeChatId) {

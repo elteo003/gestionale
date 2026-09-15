@@ -500,7 +500,7 @@ function HealthCheck({ healthStatus, onDiagnosticsClick }: any) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* API Status Card */}
                     <div 
-                        className={`relative flex items-center justify-between p-5 rounded-lg border-2 transition-all cursor-pointer hover:shadow-lg ${
+                        className={`relative flex items-center justify-between p-5 rounded-lg border-2 transition-colors cursor-pointer hover:shadow-lg ${
                             healthStatus.api === 'ok' 
                                 ? 'bg-green-50 border-green-200 hover:border-green-300' 
                                 : 'bg-red-50 border-red-200 hover:border-red-300 animate-shake'
@@ -553,7 +553,7 @@ function HealthCheck({ healthStatus, onDiagnosticsClick }: any) {
 
                     {/* Database Status Card */}
                     <div 
-                        className={`relative flex items-center justify-between p-5 rounded-lg border-2 transition-all cursor-pointer hover:shadow-lg ${
+                        className={`relative flex items-center justify-between p-5 rounded-lg border-2 transition-colors cursor-pointer hover:shadow-lg ${
                             healthStatus.db === 'ok' 
                                 ? 'bg-green-50 border-green-200 hover:border-green-300' 
                                 : 'bg-red-50 border-red-200 hover:border-red-300 animate-shake'
@@ -632,7 +632,7 @@ function OnlineUsers({ users }: any) {
                         return (
                             <div 
                                 key={user.id} 
-                                className="flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-gray-50 rounded-lg border-2 border-green-200 hover:shadow-md transition-all animate-fadeIn"
+                                className="flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-gray-50 rounded-lg border-2 border-green-200 hover:shadow-md transition-colors animate-fade-in"
                                 style={{ animationDelay: `${index * 100}ms` }}
                             >
                                 <div className="flex items-center gap-3">
@@ -736,7 +736,7 @@ function MockDataSettings({ useMockData, onToggle }: any) {
             </h3>
             
             {/* Toggle Globale */}
-            <div className={`flex items-center justify-between p-6 rounded-lg border-2 transition-all mb-6 ${
+            <div className={`flex items-center justify-between p-6 rounded-lg border-2 transition-colors mb-6 ${
                 useMockData 
                     ? 'bg-yellow-50 border-yellow-300 shadow-lg' 
                     : 'bg-gray-50 border-gray-200'
@@ -757,7 +757,7 @@ function MockDataSettings({ useMockData, onToggle }: any) {
                 </div>
                 <button
                     onClick={() => handleGlobalToggle(!useMockData)}
-                    className={`ml-6 px-6 py-3 rounded-lg font-semibold text-sm transition-all ${
+                    className={`ml-6 px-6 py-3 rounded-lg font-semibold text-sm transition-colors ${
                         useMockData
                             ? 'bg-yellow-500 text-white hover:bg-yellow-600 shadow-md'
                             : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
@@ -769,7 +769,7 @@ function MockDataSettings({ useMockData, onToggle }: any) {
 
             {/* Sezioni Mock Configurabili */}
             {useMockData && (
-                <div className="space-y-4 animate-fadeIn">
+                <div className="space-y-4 animate-fade-in">
                     <div className="mb-4">
                         <h4 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
                             <Settings className="w-4 h-4" />
@@ -787,7 +787,7 @@ function MockDataSettings({ useMockData, onToggle }: any) {
                             return (
                                 <div
                                     key={section}
-                                    className={`p-4 rounded-lg border-2 transition-all ${
+                                    className={`p-4 rounded-lg border-2 transition-colors ${
                                         isActive
                                             ? 'bg-green-50 border-green-300'
                                             : 'bg-gray-50 border-gray-200'
@@ -808,7 +808,7 @@ function MockDataSettings({ useMockData, onToggle }: any) {
                                         </div>
                                         <button
                                             onClick={() => handleSectionToggle(section)}
-                                            className={`ml-4 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                                            className={`ml-4 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
                                                 isActive
                                                     ? 'bg-green-500 text-white hover:bg-green-600 shadow-md'
                                                     : 'bg-gray-300 text-gray-700 hover:bg-gray-400'

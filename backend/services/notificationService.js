@@ -4,13 +4,17 @@ import { sendWebPushToUsers } from './webPush.js';
 
 export const TYPES = {
     CHAT_MESSAGE: 'chat.message',
+    CHAT_MENTIONED: 'chat.mentioned',
     TASK_ASSIGNED: 'task.assigned',
+    TASK_UPDATED: 'task.updated',
     EVENT_INVITED: 'event.invited',
 };
 
 export const DEFAULT_SETTINGS = {
     [TYPES.CHAT_MESSAGE]: true,
+    [TYPES.CHAT_MENTIONED]: true,
     [TYPES.TASK_ASSIGNED]: true,
+    [TYPES.TASK_UPDATED]: true,
     [TYPES.EVENT_INVITED]: true,
 };
 
@@ -148,7 +152,9 @@ export async function notifyUsers(input, deps = {}) {
     return inserted;
 }
 
-export async function notifyChatMessage({ chatId, messageId, actorId, actorName, body }, deps = {}) {
+export async function notifyChatMessage({
+    chatId, messageId, actorId, actorName, body, mentionIds = [],
+}, deps = {}) {
     const query = deps.query || pool.query.bind(pool);
     const members = await query(
         `SELECT cm.user_id as "userId", c.name as "chatName"
@@ -158,23 +164,41 @@ export async function notifyChatMessage({ chatId, messageId, actorId, actorName,
         [chatId],
     );
     const chatName = members.rows[0]?.chatName;
-    const recipientIds = members.rows.map((r) => r.userId);
+    const memberIds = members.rows.map((r) => r.userId);
     const name = await loadActorName(actorId, actorName, query);
-    const title = chatName ? `${name} in ${chatName}` : name;
-    return notifyUsers({
-        type: TYPES.CHAT_MESSAGE,
-        actorId,
-        recipientIds,
-        title,
-        body: clipBody(body),
-        collapseKey: `chat:${chatId}`,
-        payload: {
-            chatId,
-            messageId,
-            url: `/inbox?chat=${chatId}`,
-            tag: `chat:${chatId}`,
-        },
-    }, deps);
+    const mentioned = uniqueRecipients(mentionIds, actorId).filter((id) => memberIds.includes(id));
+    const others = memberIds.filter((id) => !mentioned.includes(id));
+    const payload = {
+        chatId,
+        messageId,
+        url: `/inbox?chat=${chatId}`,
+        tag: `chat:${chatId}`,
+    };
+    const clipped = clipBody(body);
+    const out = [];
+    if (mentioned.length) {
+        out.push(...await notifyUsers({
+            type: TYPES.CHAT_MENTIONED,
+            actorId,
+            recipientIds: mentioned,
+            title: `${name} ti ha citato`,
+            body: clipped,
+            collapseKey: `chat-mention:${chatId}`,
+            payload,
+        }, deps));
+    }
+    if (others.length) {
+        out.push(...await notifyUsers({
+            type: TYPES.CHAT_MESSAGE,
+            actorId,
+            recipientIds: others,
+            title: chatName ? `${name} in ${chatName}` : name,
+            body: clipped,
+            collapseKey: `chat:${chatId}`,
+            payload,
+        }, deps));
+    }
+    return out;
 }
 
 export async function notifyTaskAssigned({
@@ -199,8 +223,39 @@ export async function notifyTaskAssigned({
     }, deps);
 }
 
+export async function notifyTaskUpdated({
+    taskId, projectId, title, actorId, actorName, recipientIds, statusLabel,
+}, deps = {}) {
+    const query = deps.query || pool.query.bind(pool);
+    const name = await loadActorName(actorId, actorName, query);
+    const detail = statusLabel ? ` → ${statusLabel}` : '';
+    return notifyUsers({
+        type: TYPES.TASK_UPDATED,
+        actorId,
+        recipientIds,
+        title: 'Aggiornamento sul lavoro',
+        body: clipBody(`${name} ha aggiornato: ${title}${detail}`),
+        collapseKey: `task-update:${taskId}`,
+        payload: {
+            taskId,
+            projectId: projectId || null,
+            url: `/tasks?task=${taskId}`,
+            tag: `task-update:${taskId}`,
+        },
+    }, deps);
+}
+
+export async function loadTaskAssigneeIds(taskId, deps = {}) {
+    const query = deps.query || pool.query.bind(pool);
+    const result = await query(
+        'SELECT user_id as "userId" FROM task_assignees WHERE task_id = $1',
+        [taskId],
+    );
+    return result.rows.map((r) => r.userId);
+}
+
 export async function notifyEventInvited({
-    eventId, title, startTime, actorId, actorName, recipientIds,
+    eventId, title, startTime, actorId, actorName, recipientIds, isCall = false,
 }, deps = {}) {
     const query = deps.query || pool.query.bind(pool);
     const name = await loadActorName(actorId, actorName, query);
@@ -209,12 +264,17 @@ export async function notifyEventInvited({
         type: TYPES.EVENT_INVITED,
         actorId,
         recipientIds,
-        title: 'Invito a un evento',
-        body: clipBody(`${name} ti ha invitato: ${title}${when}`),
+        title: isCall ? 'Sei citato in una call' : 'Invito a un evento',
+        body: clipBody(
+            isCall
+                ? `${name} ti ha citato per: ${title}${when}`
+                : `${name} ti ha invitato: ${title}${when}`,
+        ),
         collapseKey: `event:${eventId}`,
         dedupeKey: `event.invited:${eventId}`,
         payload: {
             eventId,
+            isCall: Boolean(isCall),
             url: `/calendario?event=${eventId}`,
             tag: `event:${eventId}`,
         },

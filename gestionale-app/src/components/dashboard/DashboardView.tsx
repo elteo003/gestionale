@@ -1,10 +1,7 @@
 import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
 import { KanbanBoard } from './KanbanBoard';
 import { BentoCell } from '../motion/BentoCell';
 import { MotionDialog } from '../motion/MotionDialog';
-import { bentoStagger } from '../../motion/variants';
-import { useReducedMotion } from '../../motion/useReducedMotion';
 import { ShareProjectDialog, SHARE_PROJECT_EVENT, SHARE_PROJECT_FLAG } from './ShareProjectDialog';
 import { TodayRail } from './TodayRail';
 import { Plus, X } from 'lucide-react';
@@ -248,16 +245,9 @@ export function DashboardView({ activeProjectId, currentUser, projects = [] }: D
         }
     };
 
-    const reducedMotion = useReducedMotion();
-
     return (
         <>
-        <motion.div
-            className="dashboard-bento"
-            variants={reducedMotion ? undefined : bentoStagger}
-            initial={reducedMotion ? false : 'hidden'}
-            animate={reducedMotion ? undefined : 'show'}
-        >
+        <div className="dashboard-bento">
             <BentoCell className="bento-kanban">
                 <KanbanBoard
                     columns={cols}
@@ -292,7 +282,7 @@ export function DashboardView({ activeProjectId, currentUser, projects = [] }: D
             <BentoCell className="bento-activity">
                 <TodayRail activities={displayActivities} events={displayEvents} />
             </BentoCell>
-        </motion.div>
+        </div>
         </>
     );
 }

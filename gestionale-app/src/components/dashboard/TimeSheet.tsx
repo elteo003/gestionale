@@ -1,9 +1,7 @@
 import { Card } from '../ui/Card';
 import { Avatar } from '../ui/Avatar';
-import { motion } from 'framer-motion';
+import { ProgressFill } from '../ui/ProgressBar';
 import { StaggerItem, StaggerList } from '../motion/StaggerList';
-import { TRANSITION } from '../../motion/presets';
-import { useReducedMotion } from '../../motion/useReducedMotion';
 import type { TimeEntrySummary } from '../../types/models';
 
 interface TimeSheetProps {
@@ -22,7 +20,6 @@ function formatHM(totalHours: number) {
 }
 
 export function TimeSheet({ summary }: TimeSheetProps) {
-    const reduced = useReducedMotion();
     const max = Math.max(1, ...summary.map(s => Number(s.totalHours)));
 
     return (
@@ -54,12 +51,7 @@ export function TimeSheet({ summary }: TimeSheetProps) {
                                         </p>
                                     </div>
                                     <div className="w-24 h-1.5 rounded-full bg-surface-inset/80 overflow-hidden">
-                                        <motion.div
-                                            className="h-full rounded-full progress-glass-fill"
-                                            initial={reduced ? false : { width: 0 }}
-                                            animate={{ width: `${pct}%` }}
-                                            transition={reduced ? { duration: 0 } : TRANSITION.slow}
-                                        />
+                                        <ProgressFill pct={pct} className="progress-glass-fill rounded-full" />
                                     </div>
                                 </div>
                             </StaggerItem>

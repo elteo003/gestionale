@@ -36,7 +36,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   };
 
   return (
-    <Card className={cn('hover:shadow-lg transition-shadow', className)}>
+    <Card className={cn(className)}>
       <CardContent className="p-6">
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">

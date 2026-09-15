@@ -35,11 +35,16 @@ export function MotionDialog({ open, onClose, children, className = '', labelled
     return createPortal(
         <AnimatePresence>
             {open && (
-                <div
+                <motion.div
+                    key="motion-dialog"
                     className="fixed inset-0 z-[80] flex items-center justify-center px-4 py-6"
                     role="dialog"
                     aria-modal="true"
                     aria-labelledby={labelledBy}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={reduced ? { duration: 0 } : { duration: 0.15, ease: [0.19, 1, 0.22, 1] }}
                 >
                     <motion.button
                         type="button"
@@ -62,7 +67,7 @@ export function MotionDialog({ open, onClose, children, className = '', labelled
                     >
                         {children}
                     </motion.div>
-                </div>
+                </motion.div>
             )}
         </AnimatePresence>,
         document.body,

@@ -1,9 +1,6 @@
 import { useMemo } from 'react';
-import { LayoutGroup, motion } from 'framer-motion';
 import { Card } from '../ui/Card';
 import { Clock } from 'lucide-react';
-import { SPRING } from '../../motion/presets';
-import { useReducedMotion } from '../../motion/useReducedMotion';
 import { openNotice } from '../../utils/notice';
 
 interface MiniEvent {
@@ -40,7 +37,6 @@ function isSameDay(a: Date, b: Date) {
 }
 
 export function CalendarMini({ events, selectedDate = new Date(), onSelectDate }: CalendarMiniProps) {
-    const reduced = useReducedMotion();
     const weekStart = useMemo(() => startOfWeek(selectedDate), [selectedDate]);
 
     const days = useMemo(() => {
@@ -59,48 +55,36 @@ export function CalendarMini({ events, selectedDate = new Date(), onSelectDate }
 
     return (
         <Card variant="panel" title="Calendario" bodyClassName="pt-1">
-            <LayoutGroup id="cal-week">
-                <div className="grid grid-cols-7 gap-1.5 mb-4">
-                    {days.map(d => {
-                        const selected = isSameDay(d, selectedDate);
-                        return (
-                            <button
-                                key={d.toISOString()}
-                                type="button"
-                                onClick={() => onSelectDate?.(d)}
-                                className={`relative flex flex-col items-center justify-center
-                                            rounded-xl py-2 overflow-hidden
-                                            ${selected
-                                                ? 'text-white'
-                                                : 'bg-surface-inset/60 border border-line/40 text-ink hover:border-brand-600/30'}`}
+            <div className="grid grid-cols-7 gap-1.5 mb-4">
+                {days.map(d => {
+                    const selected = isSameDay(d, selectedDate);
+                    return (
+                        <button
+                            key={d.toISOString()}
+                            type="button"
+                            onClick={() => onSelectDate?.(d)}
+                            className={`relative flex flex-col items-center justify-center
+                                        rounded-xl py-2 overflow-hidden
+                                        ${selected
+                                            ? 'text-white bg-grad-brand shadow-glow-brand'
+                                            : 'bg-surface-inset/60 border border-line/40 text-ink hover:border-brand-600/30'}`}
+                        >
+                            <span
+                                className={`relative z-10 text-[15px] font-bold tabular-nums leading-none
+                                            ${selected ? 'text-white' : 'text-ink'}`}
                             >
-                                {selected && !reduced && (
-                                    <motion.span
-                                        layoutId="cal-day-pill"
-                                        className="absolute inset-0 rounded-xl bg-grad-brand shadow-glow-brand"
-                                        transition={SPRING.snap}
-                                    />
-                                )}
-                                {selected && reduced && (
-                                    <span className="absolute inset-0 rounded-xl bg-grad-brand shadow-glow-brand" />
-                                )}
-                                <span
-                                    className={`relative z-10 text-[15px] font-bold tabular-nums leading-none
-                                                ${selected ? 'text-white' : 'text-ink'}`}
-                                >
-                                    {d.getDate()}
-                                </span>
-                                <span
-                                    className={`relative z-10 text-[9px] uppercase mt-1 font-semibold tracking-wider
-                                                ${selected ? 'text-white/85' : 'text-ink-subtle'}`}
-                                >
-                                    {DAY_LABELS[(d.getDay() + 6) % 7]}
-                                </span>
-                            </button>
-                        );
-                    })}
-                </div>
-            </LayoutGroup>
+                                {d.getDate()}
+                            </span>
+                            <span
+                                className={`relative z-10 text-[9px] uppercase mt-1 font-semibold tracking-wider
+                                            ${selected ? 'text-white/85' : 'text-ink-subtle'}`}
+                            >
+                                {DAY_LABELS[(d.getDay() + 6) % 7]}
+                            </span>
+                        </button>
+                    );
+                })}
+            </div>
 
             <p className="text-[10px] uppercase tracking-[0.14em] text-ink-subtle font-semibold mb-2">
                 Programma di oggi
@@ -113,16 +97,14 @@ export function CalendarMini({ events, selectedDate = new Date(), onSelectDate }
                     </p>
                 )}
                 {todayEvents.map(e => (
-                    <motion.button
+                    <button
                         key={e.id}
                         type="button"
-                        whileTap={reduced ? undefined : { scale: 0.99 }}
-                        transition={SPRING.snap}
                         onClick={() => openNotice(
                             e.title,
                             `${fmtTime(e.startTime)}${e.endTime ? ` – ${fmtTime(e.endTime)}` : ''}`,
                         )}
-                        className="w-full text-left px-2 py-1.5 flex items-center gap-2 rounded-lg
+                        className="pressable w-full text-left px-2 py-1.5 flex items-center gap-2 rounded-lg
                                    hover:bg-surface-inset/60 transition-colors"
                     >
                         <span className="text-[10px] font-semibold text-ink-subtle tabular-nums w-10 flex-shrink-0">
@@ -134,7 +116,7 @@ export function CalendarMini({ events, selectedDate = new Date(), onSelectDate }
                             <p className="text-[11px] font-medium text-ink truncate">{e.title}</p>
                             <Clock className="w-3 h-3 text-ink-subtle flex-shrink-0 ml-auto" />
                         </div>
-                    </motion.button>
+                    </button>
                 ))}
             </div>
         </Card>

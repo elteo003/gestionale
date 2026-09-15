@@ -116,8 +116,8 @@ export default {
       },
       keyframes: {
         'fade-in': {
-          '0%': { opacity: 0, transform: 'translateY(6px)' },
-          '100%': { opacity: 1, transform: 'translateY(0)' },
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
         },
         'pulse-soft': {
           '0%,100%': { opacity: 1 },
@@ -125,7 +125,7 @@ export default {
         },
       },
       animation: {
-        'fade-in': 'fade-in .22s cubic-bezier(0.23, 1, 0.32, 1) both',
+        'fade-in': 'fade-in .18s cubic-bezier(0.19, 1, 0.22, 1) both',
         'pulse-soft': 'pulse-soft 2s ease-in-out infinite',
       },
     },

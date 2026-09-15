@@ -24,7 +24,8 @@ describe('notification recipients e preferenze', () => {
     it('tipo assente nelle preferenze resta acceso', () => {
         assert.equal(settingEnabled({}, TYPES.CHAT_MESSAGE), true);
         assert.equal(settingEnabled({ 'chat.message': false }, TYPES.CHAT_MESSAGE), false);
-        assert.equal(settingEnabled({ 'task.assigned': true }, TYPES.CHAT_MESSAGE), true);
+        assert.equal(settingEnabled({}, TYPES.CHAT_MENTIONED), true);
+        assert.equal(settingEnabled({}, TYPES.TASK_UPDATED), true);
     });
 
     it('clipBody tronca con ellissi', () => {

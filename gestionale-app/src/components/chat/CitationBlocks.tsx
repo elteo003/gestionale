@@ -1,7 +1,5 @@
 import { FileText } from 'lucide-react';
-import { motion } from 'framer-motion';
-import { TRANSITION } from '../../motion/presets';
-import { useReducedMotion } from '../../motion/useReducedMotion';
+import { ProgressFill } from '../ui/ProgressBar';
 
 export interface CiteQuoteData {
     id?: string;
@@ -41,7 +39,6 @@ export function CiteDocument({
     progress,
     allowed = true,
 }: CiteDocumentData) {
-    const reduced = useReducedMotion();
     const locked = allowed === false;
     const label = locked ? 'Documento riservato' : (title || 'Documento');
 
@@ -70,12 +67,7 @@ export function CiteDocument({
             </div>
             {typeof progress === 'number' && !locked && (
                 <div className="h-1 rounded-full bg-surface-inset overflow-hidden mt-2">
-                    <motion.div
-                        className="h-full rounded-full progress-glass-fill"
-                        initial={reduced ? false : { width: 0 }}
-                        animate={{ width: `${progress}%` }}
-                        transition={reduced ? { duration: 0 } : TRANSITION.slow}
-                    />
+                    <ProgressFill pct={progress} className="progress-glass-fill rounded-full" />
                 </div>
             )}
         </>

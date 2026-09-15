@@ -3,7 +3,7 @@ import pool from '../database/connection.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { isPrivileged, isSocio } from '../lib/roles.js';
 import { canEditTask, canEditProjectTasks } from '../lib/taskAccess.js';
-import { notifyTaskAssigned, scheduleNotify } from '../services/notificationService.js';
+import { notifyTaskAssigned, notifyTaskUpdated, loadTaskAssigneeIds, scheduleNotify } from '../services/notificationService.js';
 
 const router = express.Router();
 router.use(authenticateToken);
@@ -40,6 +40,24 @@ async function hydrateTasks(taskRows) {
         ...t,
         subtasks: subtasks.rows.filter(s => s.taskId === t.id),
         assignees: assignees.rows.filter(a => a.taskId === t.id),
+    }));
+}
+
+async function notifyAssigneesOfUpdate(req, taskId, statusLabel) {
+    const task = await pool.query(
+        'SELECT title, project_id as "projectId" FROM tasks WHERE task_id = $1',
+        [taskId],
+    );
+    if (!task.rows[0]) return;
+    const recipientIds = await loadTaskAssigneeIds(taskId);
+    if (!recipientIds.length) return;
+    scheduleNotify(notifyTaskUpdated({
+        taskId,
+        projectId: task.rows[0].projectId,
+        title: task.rows[0].title,
+        actorId: req.user.userId,
+        recipientIds,
+        statusLabel,
     }));
 }
 
@@ -187,6 +205,7 @@ router.patch('/:id/status', async (req, res) => {
         );
 
         res.json({ id: result.rows[0].id, status });
+        notifyAssigneesOfUpdate(req, id, status);
     } catch (error) {
         console.error('Errore update task status:', error);
         res.status(500).json({ error: 'Errore interno del server' });
@@ -350,6 +369,11 @@ router.patch('/:id/move', guardTaskEdit, async (req, res) => {
         );
 
         res.json(result.rows[0]);
+        const col = await pool.query(
+            'SELECT name FROM board_columns WHERE column_id = $1',
+            [columnId],
+        );
+        notifyAssigneesOfUpdate(req, req.params.id, col.rows[0]?.name || 'spostato');
     } catch (error) {
         console.error('Errore move task:', error);
         res.status(500).json({ error: 'Errore interno del server' });

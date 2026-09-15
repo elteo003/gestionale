@@ -89,7 +89,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
             <BackgroundOrnaments />
 
             <div className="relative w-full max-w-md">
-                <div className="card p-8 backdrop-blur-xl bg-surface-raised/80">
+                <div className="card p-8 backdrop-blur-[12px] bg-surface-raised/80">
                     <div className="flex items-center gap-3 mb-1">
                         <div className="w-10 h-10 rounded-xl bg-grad-brand shadow-glow-brand flex items-center justify-center">
                             <span className="text-white font-bold text-lg">G</span>
@@ -254,7 +254,7 @@ function BackgroundOrnaments() {
                 className="pointer-events-none absolute -top-32 -left-32 w-[28rem] h-[28rem] rounded-full"
                 style={{
                     background: 'radial-gradient(closest-side, rgba(139,92,246,.45), transparent 70%)',
-                    filter: 'blur(20px)',
+                    filter: 'blur(12px)',
                 }}
             />
             <div
@@ -262,7 +262,7 @@ function BackgroundOrnaments() {
                 className="pointer-events-none absolute -bottom-40 -right-32 w-[32rem] h-[32rem] rounded-full"
                 style={{
                     background: 'radial-gradient(closest-side, rgba(217,70,239,.4), transparent 70%)',
-                    filter: 'blur(20px)',
+                    filter: 'blur(12px)',
                 }}
             />
             <div
@@ -270,7 +270,7 @@ function BackgroundOrnaments() {
                 className="pointer-events-none absolute top-1/3 right-1/4 w-72 h-72 rounded-full"
                 style={{
                     background: 'radial-gradient(closest-side, rgba(34,211,238,.3), transparent 70%)',
-                    filter: 'blur(28px)',
+                    filter: 'blur(12px)',
                 }}
             />
         </>

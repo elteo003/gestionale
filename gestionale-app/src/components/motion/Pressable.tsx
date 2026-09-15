@@ -1,7 +1,4 @@
-import { motion } from 'framer-motion';
 import type { ComponentPropsWithoutRef, ReactNode } from 'react';
-import { SPRING } from '../../motion/presets';
-import { useReducedMotion } from '../../motion/useReducedMotion';
 
 type PressableProps = Omit<
     ComponentPropsWithoutRef<'button'>,
@@ -11,29 +8,11 @@ type PressableProps = Omit<
     className?: string;
 };
 
-/** Tactile press — subtle scale, no bounce circus. */
+/** Tactile press — CSS hover/active, no spring chasing the pointer. */
 export function Pressable({ children, className = '', disabled, ...rest }: PressableProps) {
-    const reduced = useReducedMotion();
-
-    if (reduced) {
-        return (
-            <button type="button" className={className} disabled={disabled} {...rest}>
-                {children}
-            </button>
-        );
-    }
-
     return (
-        <motion.button
-            type="button"
-            className={className}
-            disabled={disabled}
-            whileHover={disabled ? undefined : { scale: 1.01 }}
-            whileTap={disabled ? undefined : { scale: 0.98 }}
-            transition={SPRING.snap}
-            {...rest}
-        >
+        <button type="button" className={`pressable ${className}`.trim()} disabled={disabled} {...rest}>
             {children}
-        </motion.button>
+        </button>
     );
 }

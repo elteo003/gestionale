@@ -304,14 +304,13 @@ export const zIndex = {
 export const transitions = {
   duration: {
     fast: '150ms',
-    base: '200ms',
-    slow: '300ms',
-    slower: '500ms',
+    base: '180ms',
+    slow: '220ms',
+    slower: '220ms',
   },
   easing: {
-    easeIn: 'cubic-bezier(0.4, 0, 1, 1)',
-    easeOut: 'cubic-bezier(0, 0, 0.2, 1)',
-    easeInOut: 'cubic-bezier(0.4, 0, 0.2, 1)',
+    easeOut: 'cubic-bezier(0.19, 1, 0.22, 1)',
+    easeInOut: 'cubic-bezier(0.645, 0.045, 0.355, 1)',
   },
 } as const;
 

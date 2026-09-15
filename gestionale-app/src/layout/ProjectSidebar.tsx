@@ -21,7 +21,6 @@ export function ProjectSidebar({
     return (
         <aside
             className={`hidden lg:flex flex-shrink-0 flex-col bg-surface-raised border-r border-line/40 overflow-hidden
-                        transition-[width] duration-200 ease-out
                         ${collapsed ? 'w-12' : 'w-[17.5rem]'}`}
         >
             {collapsed ? (
