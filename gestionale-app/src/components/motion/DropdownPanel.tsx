@@ -33,16 +33,7 @@ interface DropdownPanelProps {
     id?: string;
 }
 
-const CLOSE_MS = 240;
-
-const ORIGIN: Record<DropdownOrigin, string> = {
-    top: 'top center',
-    'top-right': 'top right',
-    'top-left': 'top left',
-    bottom: 'bottom center',
-    'bottom-right': 'bottom right',
-    'bottom-left': 'bottom left',
-};
+const CLOSE_MS = 180;
 
 function place(
     rect: DOMRect,
@@ -70,8 +61,8 @@ function place(
 }
 
 /**
- * Overlay menu — portaled to body so transform is not trapped in
- * backdrop-filter / overflow ancestors. CSS transition from the trigger.
+ * Overlay menu — portaled to body so clip-path is not trapped in
+ * backdrop-filter / overflow ancestors. Unfolds from the trigger via clip-path.
  */
 export function DropdownPanel({
     open,
@@ -103,12 +94,16 @@ export function DropdownPanel({
     useEffect(() => {
         if (!open || !mounted) return;
         let cancelled = false;
-        const frame = requestAnimationFrame(() => {
-            if (!cancelled) setVisible(true);
+        let inner = 0;
+        const outer = requestAnimationFrame(() => {
+            inner = requestAnimationFrame(() => {
+                if (!cancelled) setVisible(true);
+            });
         });
         return () => {
             cancelled = true;
-            cancelAnimationFrame(frame);
+            cancelAnimationFrame(outer);
+            cancelAnimationFrame(inner);
         };
     }, [open, mounted]);
 
@@ -136,14 +131,11 @@ export function DropdownPanel({
             data-open={visible ? 'true' : 'false'}
             data-origin={origin}
             data-side={side}
-            className={cn('dropdown-panel', className)}
-            style={{
-                ...place(rect, align, side, gap),
-                ['--dropdown-origin' as string]: ORIGIN[origin],
-            }}
+            className="dropdown-panel"
+            style={place(rect, align, side, gap)}
             onMouseDown={(e) => e.stopPropagation()}
         >
-            {children}
+            <div className={cn('dropdown-panel-body', className)}>{children}</div>
         </div>,
         document.body,
     );

@@ -258,23 +258,44 @@
     transition: transform 0.18s cubic-bezier(0.19, 1, 0.22, 1);
   }
 
+  /* Origin-aware unfold: clip from the trigger corner, no scale (scale+shadow = cheap pop). */
   .dropdown-panel {
-    transform: translateY(-8%) scale(0.98);
-    opacity: 0;
+    clip-path: inset(0 0 100% 100% round 1rem);
+    opacity: 1;
     pointer-events: none;
-    transform-origin: var(--dropdown-origin, top right);
-    transition-property: transform, opacity;
-    transition-duration: 200ms;
+    will-change: clip-path;
+    filter: drop-shadow(0 16px 28px rgb(0 0 0 / 0.28));
+    transition-property: clip-path;
+    transition-duration: 160ms;
     transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
   }
-  .dropdown-panel[data-side="top"] {
-    transform: translateY(8%) scale(0.98);
+  .dropdown-panel[data-origin="top"] {
+    clip-path: inset(0 0 100% 0 round 1rem);
+  }
+  .dropdown-panel[data-origin="top-left"] {
+    clip-path: inset(0 100% 100% 0 round 1rem);
+  }
+  .dropdown-panel[data-origin="top-right"] {
+    clip-path: inset(0 0 100% 100% round 1rem);
+  }
+  .dropdown-panel[data-origin="bottom"] {
+    clip-path: inset(100% 0 0 0 round 1rem);
+  }
+  .dropdown-panel[data-origin="bottom-left"] {
+    clip-path: inset(100% 100% 0 0 round 1rem);
+  }
+  .dropdown-panel[data-origin="bottom-right"] {
+    clip-path: inset(100% 0 0 100% round 1rem);
   }
   .dropdown-panel[data-open="true"] {
-    transform: translateY(0) scale(1);
-    opacity: 1;
+    clip-path: inset(0 round 1rem);
     pointer-events: auto;
-    transition-duration: 260ms;
+    transition-duration: 200ms;
+  }
+  .dropdown-panel-body {
+    max-height: inherit;
+    min-height: 0;
+    box-shadow: none;
   }
 
   .pressable {
@@ -304,11 +325,14 @@
       transform: none;
     }
     .dropdown-panel {
-      transform: none;
+      clip-path: inset(0 round 1rem) !important;
+      opacity: 0;
+      will-change: auto;
       transition: opacity 0.16s ease;
     }
     .dropdown-panel[data-open="true"] {
-      transform: none;
+      clip-path: inset(0 round 1rem) !important;
+      opacity: 1;
     }
   }
 }

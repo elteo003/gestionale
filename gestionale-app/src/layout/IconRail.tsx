@@ -113,10 +113,11 @@ export function IconRail({ activeView, setActiveView }: IconRailProps) {
     };
 
     return (
-        <aside className="hidden md:flex w-[3.5rem] flex-shrink-0 flex-col items-center
-                          bg-surface-sunken border-r border-line/40 py-3 gap-1.5">
-            <div className="w-8 h-8 rounded-lg bg-grad-brand flex items-center justify-center mb-2 shadow-glow-brand">
-                <span className="text-white text-xs font-bold">J</span>
+        <div className="flex w-[3.5rem] flex-shrink-0 flex-col items-center py-3 gap-1.5">
+            <div className="mb-2 flex h-9 w-9 items-center justify-center">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-grad-brand shadow-glow-brand">
+                    <span className="text-white text-xs font-bold">J</span>
+                </div>
             </div>
 
             <div className="mt-2">
@@ -136,6 +137,6 @@ export function IconRail({ activeView, setActiveView }: IconRailProps) {
             >
                 {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
-        </aside>
+        </div>
     );
 }

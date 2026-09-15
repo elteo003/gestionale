@@ -52,20 +52,22 @@ export function AppShell({
 
     return (
         <div className="h-screen flex bg-surface text-ink overflow-hidden">
-            <IconRail activeView={activeView} setActiveView={setActiveView} />
-            {showProjectSidebar && (
-                <ProjectSidebar
-                    projects={projects}
-                    activeProjectId={activeProjectId}
-                    onSelectProject={setActiveProjectId}
-                    onAddProject={onAddProject}
-                    onNavigate={setActiveView}
-                    onQuickAction={onQuickAction}
-                    onShareProject={onShareProject}
-                    collapsed={!sidebarOpen}
-                    onToggleCollapsed={toggleSidebar}
-                />
-            )}
+            <div className="hidden md:flex flex-shrink-0 h-full bg-surface-sunken border-r border-line/20">
+                <IconRail activeView={activeView} setActiveView={setActiveView} />
+                {showProjectSidebar && (
+                    <ProjectSidebar
+                        projects={projects}
+                        activeProjectId={activeProjectId}
+                        onSelectProject={setActiveProjectId}
+                        onAddProject={onAddProject}
+                        onNavigate={setActiveView}
+                        onQuickAction={onQuickAction}
+                        onShareProject={onShareProject}
+                        collapsed={!sidebarOpen}
+                        onToggleCollapsed={toggleSidebar}
+                    />
+                )}
+            </div>
             <div className="flex-1 flex flex-col min-w-0">
                 <TopBar
                     user={user}

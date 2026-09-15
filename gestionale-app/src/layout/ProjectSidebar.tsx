@@ -19,34 +19,34 @@ export function ProjectSidebar({
     collapsed = false, onToggleCollapsed,
 }: ProjectSidebarProps) {
     return (
-        <aside
-            className={`hidden lg:flex flex-shrink-0 flex-col bg-surface-raised border-r border-line/40 overflow-hidden
+        <div
+            className={`hidden lg:flex flex-shrink-0 flex-col overflow-hidden
                         ${collapsed ? 'w-12' : 'w-[17.5rem]'}`}
         >
             {collapsed ? (
-                <div className="flex flex-col items-center pt-3 gap-2">
+                <div className="flex flex-col items-center py-3 gap-1">
                     <button
                         type="button"
-                        className="icon-btn !w-8 !h-8"
+                        className="nav-rail-btn"
                         aria-label="Nuovo progetto"
                         onClick={() => onAddProject?.()}
                     >
-                        <Plus className="w-3.5 h-3.5" />
+                        <Plus className="w-[18px] h-[18px]" />
                     </button>
                     <button
                         type="button"
-                        className="icon-btn !w-8 !h-8"
+                        className="nav-rail-btn"
                         aria-label="Apri menu progetti"
                         title="Apri menu"
                         aria-expanded={false}
                         onClick={onToggleCollapsed}
                     >
-                        <ChevronsRight className="w-4 h-4 text-ink-muted" />
+                        <ChevronsRight className="w-[18px] h-[18px]" />
                     </button>
                 </div>
             ) : (
                 <>
-                    <div className="px-3 pt-4 pb-3 flex items-center gap-1.5">
+                    <div className="px-3 py-3 flex items-center gap-1.5">
                         <button
                             type="button"
                             className="icon-btn !w-7 !h-7"
@@ -129,6 +129,6 @@ export function ProjectSidebar({
                     />
                 </>
             )}
-        </aside>
+        </div>
     );
 }
