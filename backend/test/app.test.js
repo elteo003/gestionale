@@ -26,6 +26,11 @@ describe('app', () => {
         assert.ok('db' in res.body);
     });
 
+    it('GET /api/push/vapid-public-key richiede autenticazione', async () => {
+        const res = await request(app).get('/api/push/vapid-public-key');
+        assert.equal(res.status, 401);
+    });
+
     it('GET / risponde online', async () => {
         const res = await request(app).get('/');
         assert.equal(res.status, 200);

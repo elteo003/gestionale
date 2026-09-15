@@ -11,9 +11,16 @@ if (!process.env.DATABASE_URL) {
     console.error('Configura la variabile d\'ambiente DATABASE_URL nel file .env o su Render');
 }
 
+const databaseUrl = process.env.DATABASE_URL || '';
+const useSsl =
+    process.env.DRIZZLE_SSL !== 'false' &&
+    (process.env.NODE_ENV === 'production' ||
+        databaseUrl.includes('supabase.com') ||
+        databaseUrl.includes('render.com'));
+
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+    ssl: useSsl ? { rejectUnauthorized: false } : false,
 });
 
 const isTest = process.env.NODE_ENV === 'test';

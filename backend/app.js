@@ -19,6 +19,7 @@ import sprintsRoutes from './routes/sprints.js';
 import activitiesRoutes from './routes/activities.js';
 import timeEntriesRoutes from './routes/timeEntries.js';
 import messagesRoutes from './routes/messages.js';
+import notificationsRoutes from './routes/notifications.js';
 import pollsRoutes from './routes/polls.js';
 import candidatesRoutes from './routes/candidates.js';
 import onboardingRoutes from './routes/onboarding.js';
@@ -112,6 +113,7 @@ export function createApp() {
     app.use('/api/sprints', sprintsRoutes);
     app.use('/api/activities', activitiesRoutes);
     app.use('/api/time-entries', timeEntriesRoutes);
+    app.use('/api', notificationsRoutes);
     app.use('/api', messagesRoutes);
 
     app.use((err, req, res, next) => {

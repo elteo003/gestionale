@@ -17,6 +17,12 @@ services:
         generateValue: true
       - key: FRONTEND_URL
         value: https://gestionale-i5bj.onrender.com
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        value: mailto:notifiche@gestionale-jeins.local
     healthCheckPath: /health
 
 databases:

@@ -1,8 +1,11 @@
+import http from 'http';
 import { createApp } from './app.js';
 import pool from './database/connection.js';
+import { attachChatHub } from './lib/chatHub.js';
 
 const PORT = process.env.PORT || 3000;
 const app = createApp();
+const server = http.createServer(app);
 
 async function testDatabaseConnection() {
     try {
@@ -14,7 +17,12 @@ async function testDatabaseConnection() {
 }
 
 if (process.env.NODE_ENV !== 'test') {
-    app.listen(PORT, async () => {
+    server.on('error', (err) => {
+        console.error('HTTP server:', err.message);
+        process.exit(1);
+    });
+    server.listen(PORT, async () => {
+        attachChatHub(server);
         console.log(`Server su porta ${PORT}`);
         await testDatabaseConnection();
     });

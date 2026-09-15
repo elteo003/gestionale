@@ -1,0 +1,17 @@
+---
+description: Ogni aggiornamento JEINS richiede blueprint da senior, registro numerato e timestamp di progettazione
+alwaysApply: true
+---
+
+# Blueprint e registro aggiornamenti
+
+Prima di scrivere codice per un aggiornamento (bug, feature, refactor, UI, API, schema, dipendenze):
+
+1. **Numero progressivo** a 3 cifre nel titolo (`001`, `002`, …). Prossimo libero: ultima riga di `docs/aggiornamenti/REGISTRO.md`.
+2. **Blueprint esaustivo** in `docs/aggiornamenti/` seguendo `docs/aggiornamenti/TEMPLATE-BLUEPRINT.md`. Voce da principal engineer: problema, causa radice, alternative scartate, rischio, piano di verifica. Diagrammi **Mermaid nel punto in cui spiegano una decisione**, non in appendice decorativa.
+3. **Registro**: nuova riga in `docs/aggiornamenti/REGISTRO.md`. Data e ora di **progettazione** (Europe/Rome) stanno nel registro e nel blueprint, non nel filename.
+4. Implementa solo dopo il blueprint. Poi marca lo stato nel registro e, se serve, l’ora di implementazione.
+
+Non saltare il blueprint per “è piccolo”: un offset di 8 righe ha mandato in tilt il Kanban. Eccezione unica: typo/commento/lockfile senza effetto runtime — una riga nel registro, blueprint omesso.
+
+Non inventare pixel magici, seconde librerie o workaround che mascherano la causa. Argomenta perché la scelta tiene tra cinque anni.

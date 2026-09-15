@@ -27,8 +27,8 @@ export const Card: FC<CardProps> = ({
     bodyClassName = '', className = '', variant = 'default',
     hover = false, children, ...rest
 }) => {
-    const isWidget = title !== undefined || subtitle !== undefined || actions !== undefined
-        || headerAction !== undefined || variant === 'panel' || Boolean(bodyClassName);
+    const isWidget = title != null || subtitle != null || actions != null
+        || headerAction != null || variant === 'panel' || Boolean(bodyClassName);
 
     if (isWidget && (variant === 'default' || variant === 'panel')) {
         const shell = variant === 'panel' ? 'bento-panel' : 'card';

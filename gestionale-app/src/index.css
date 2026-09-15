@@ -40,7 +40,8 @@
 
   .dark input[type="datetime-local"],
   .dark input[type="date"],
-  .dark input[type="time"] {
+  .dark input[type="time"],
+  .dark select {
     color-scheme: dark;
   }
 
@@ -155,33 +156,31 @@
     z-index: 1;
     display: grid;
     gap: 1rem;
+    min-height: calc(100vh - 8.5rem);
     grid-template-columns: 1fr;
+    grid-template-rows: minmax(22rem, 1fr) minmax(16rem, auto);
     grid-template-areas:
       "kanban"
-      "timesheet"
-      "velocity"
-      "calendar"
-      "activity"
-      "chat";
+      "activity";
   }
 
   @media (min-width: 1024px) {
     .dashboard-bento {
-      grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(260px, 320px);
-      grid-template-rows: auto auto auto;
-      grid-template-areas:
-        "kanban    kanban    kanban   activity"
-        "timesheet timesheet velocity activity"
-        "calendar  calendar  calendar chat";
+      grid-template-columns: minmax(0, 1fr) 20rem;
+      grid-template-rows: minmax(0, 1fr);
+      grid-template-areas: "kanban activity";
     }
   }
 
-  .bento-kanban    { grid-area: kanban; min-width: 0; }
-  .bento-activity  { grid-area: activity; min-width: 0; }
-  .bento-timesheet { grid-area: timesheet; min-width: 0; }
-  .bento-velocity  { grid-area: velocity; min-width: 0; }
-  .bento-calendar  { grid-area: calendar; min-width: 0; }
-  .bento-chat      { grid-area: chat; min-width: 0; }
+  .bento-kanban,
+  .bento-activity {
+    grid-area: kanban;
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+  }
+
+  .bento-activity { grid-area: activity; }
 
   .bento-panel {
     @apply rounded-2xl border border-line/55 bg-surface-raised shadow-panel;
@@ -193,9 +192,16 @@
   }
 
   .kanban-well {
-    @apply rounded-xl min-h-[220px] p-1.5;
+    @apply rounded-xl min-h-[14rem] lg:min-h-[min(52vh,30rem)] p-1.5;
     background: rgb(var(--surface-inset) / 0.5);
     border: 1px solid rgb(var(--line) / 0.5);
+    transition: border-color 0.18s cubic-bezier(0.23, 1, 0.32, 1),
+                background-color 0.18s cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .kanban-well--over {
+    border-color: rgba(26, 122, 85, 0.4);
+    background-color: rgba(26, 122, 85, 0.06);
   }
 
   .search-pill {
@@ -221,7 +227,7 @@
   .scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
 
   .page-enter {
-    animation: page-enter 0.22s cubic-bezier(0.23, 1, 0.32, 1) both;
+    animation: page-enter 0.22s cubic-bezier(0.23, 1, 0.32, 1) backwards;
   }
 
   @keyframes page-enter {
@@ -231,12 +237,26 @@
     }
     to {
       opacity: 1;
-      transform: translateY(0);
+      transform: none;
     }
   }
 
   @media (prefers-reduced-motion: reduce) {
     .page-enter {
+      animation: none;
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+@layer utilities {
+  .spin-fast {
+    animation: spin 0.7s linear infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .spin-fast {
       animation: none;
     }
   }

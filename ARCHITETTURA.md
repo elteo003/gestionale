@@ -7,26 +7,23 @@ Questa è un'applicazione full-stack per la gestione di un'associazione, con sep
 ## 🏗️ Architettura
 
 ```
-┌─────────────────┐
-│   Browser       │
-│   (Frontend)    │
-│   React + Vite  │
-└────────┬────────┘
-         │ HTTP/REST API
-         │ (JWT Token)
-         ▼
-┌─────────────────┐
-│   Render.com    │
-│   Backend API   │
-│   Node.js +     │
-│   Express.js     │
-└────────┬────────┘
-         │ SQL Queries
-         ▼
-┌─────────────────┐
-│   PostgreSQL    │
-│   Database      │
-└─────────────────┘
+┌─────────────────┐     ┌─────────────────┐
+│   Browser / PWA │     │  Electron (PC)  │
+│   React + Vite  │     │  stesso UI      │
+└────────┬────────┘     └────────┬────────┘
+         │ HTTP + WS + Web Push  │
+         └───────────┬───────────┘
+                     ▼
+            ┌─────────────────┐
+            │   Backend API   │
+            │   Express + WS  │
+            │   inbox + VAPID │
+            └────────┬────────┘
+                     │
+                     ▼
+            ┌─────────────────┐
+            │   PostgreSQL    │
+            └─────────────────┘
 ```
 
 ## 📁 Struttura Progetto
@@ -37,13 +34,13 @@ GESTIONALE-JEINS/
 │   ├── app.js                 # Factory Express (middleware + route)
 │   ├── server.js              # Avvio HTTP
 │   ├── lib/                   # roles, pagination, taskAccess, AppError
-│   ├── services/              # authService (logica auth)
+│   ├── services/              # authService, notificationService, webPush
 │   ├── middleware/            # auth, authorize, rateLimit, requestLog
-│   ├── validators/            # schemi Zod (auth)
+│   ├── validators/            # schemi Zod (auth, notifications)
 │   ├── routes/                # API REST per dominio
 │   │   ├── auth, clients, projects, contracts, events
 │   │   ├── users, tasks, sprints, activities, timeEntries
-│   │   ├── messages, polls, candidates, onboarding, eventReports
+│   │   ├── messages, notifications, polls, candidates, onboarding, eventReports
 │   ├── database/
 │   │   ├── schema.sql         # Bootstrap DB nuovo ambiente
 │   │   ├── migration_*.sql    # Migrazioni incrementali
@@ -156,6 +153,19 @@ Documentazione operativa: `docs/RBAC.md`, `docs/INDEX.md`.
 - `GET /api/users` - Lista utenti
 - `GET /api/users/:id` - Dettaglio utente
 
+### Notifiche (web + desktop)
+Stesso inbox e stesso protocollo Web Push (VAPID). Electron si registra con `platform: "desktop"`.
+- `GET /api/notifications` - Inbox (`?unread=1&limit=50`)
+- `GET /api/notifications/unread-count`
+- `PATCH /api/notifications/:id/read`
+- `POST /api/notifications/read-all`
+- `GET` / `PATCH /api/notifications/preferences`
+- `GET /api/push/vapid-public-key` - Chiave pubblica (503 se VAPID assente)
+- `POST /api/push/subscribe` - Body: `{ platform, endpoint, keys: { p256dh, auth } }`
+- `DELETE /api/push/subscribe` - Body: `{ endpoint }`
+
+Fatti di dominio che popolano l’inbox (senza far fallire il 201 se il push è down): messaggio chat, assegnazione task, invito evento (prima occorrenza se ricorrente). In parallelo: frame WS `{ type: "notification" }` all’utente.
+
 ## 🚀 Setup e Deploy
 
 ### Setup Locale
@@ -214,6 +224,9 @@ JWT_SECRET=your-super-secret-key
 PORT=3000
 NODE_ENV=production
 FRONTEND_URL=https://your-frontend.onrender.com
+VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
+VAPID_SUBJECT=mailto:admin@example.com
 ```
 
 ### Frontend (.env)
@@ -230,6 +243,7 @@ VITE_API_URL=https://your-backend.onrender.com
 ✅ API Eventi/Calendario (CRUD + RSVP)
 ✅ Responsive design (mobile + desktop)
 ✅ Persistenza dati PostgreSQL
+✅ Notifiche: inbox + Web Push VAPID + fan-out WS per utente (web e desktop)
 
 ## 🔄 Funzionalità da Completare
 

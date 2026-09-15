@@ -3,6 +3,7 @@ import pool from '../database/connection.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { isSocio, isPrivileged } from '../lib/roles.js';
 import { requireNotSocio } from '../middleware/authorize.js';
+import { notifyEventInvited, scheduleNotify } from '../services/notificationService.js';
 
 const router = express.Router();
 router.use(authenticateToken);
@@ -407,6 +408,17 @@ router.post('/', requireNotSocio, async (req, res) => {
         }
 
         await client.query('COMMIT');
+
+        const first = createdEvents[0];
+        if (first?.participants?.length) {
+            scheduleNotify(notifyEventInvited({
+                eventId: first.id,
+                title: first.title,
+                startTime: first.startTime,
+                actorId: req.user.userId,
+                recipientIds: first.participants.map((p) => p.userId),
+            }));
+        }
         
         // Se è un evento ricorrente, restituisci tutti gli eventi creati
         // Altrimenti restituisci solo il primo (singolo evento)

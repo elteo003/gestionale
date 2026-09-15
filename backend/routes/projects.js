@@ -4,6 +4,7 @@ import { authenticateToken } from '../middleware/auth.js';
 import { requireProjectWrite, requireNotSocio } from '../middleware/authorize.js';
 import { isSocio, isPrivileged, canAccessProjectInArea } from '../lib/roles.js';
 import { isUserAssignedToProject } from '../lib/projectAccess.js';
+import { userCanSeeProject } from '../lib/documentAccess.js';
 import { attachTodosToProjects } from '../lib/projects.js';
 
 const router = express.Router();
@@ -507,6 +508,13 @@ router.post('/:id/team', canManageTeam, async (req, res) => {
             'SELECT user_id as id, name, email, area, role FROM users WHERE user_id = $1',
             [userId]
         );
+
+        await logProjectActivity(req.user.userId, 'team.added', {
+            targetType: 'user',
+            targetId: userId,
+            projectId: id,
+            payload: { target: userResult.rows[0]?.name || 'un membro' },
+        });
         
         res.status(201).json({ ...result.rows[0], user: userResult.rows[0] });
     } catch (error) {
@@ -535,6 +543,136 @@ router.delete('/:id/team/:userId', canManageTeam, async (req, res) => {
         res.json({ message: 'Utente rimosso dal team con successo' });
     } catch (error) {
         console.error('Errore rimozione membro team:', error);
+        res.status(500).json({ error: 'Errore interno del server' });
+    }
+});
+
+function parseHttpUrl(raw) {
+    const trimmed = String(raw || '').trim();
+    if (!trimmed) return null;
+    const withProto = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+    try {
+        const parsed = new URL(withProto);
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+        return parsed.href;
+    } catch {
+        return null;
+    }
+}
+
+async function logProjectActivity(actorId, type, { targetType, targetId, projectId, payload }) {
+    await pool.query(
+        `INSERT INTO activities (actor_id, type, target_type, target_id, project_id, payload)
+         VALUES ($1, $2, $3, $4, $5, $6::jsonb)`,
+        [
+            actorId,
+            type,
+            targetType || null,
+            targetId || null,
+            projectId || null,
+            JSON.stringify(payload || {}),
+        ],
+    );
+}
+
+// GET /api/projects/:id/resources
+router.get('/:id/resources', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const projectCheck = await pool.query(
+            'SELECT project_id, area FROM projects WHERE project_id = $1',
+            [id],
+        );
+        if (!projectCheck.rows.length) {
+            return res.status(404).json({ error: 'Progetto non trovato' });
+        }
+        const visible = await userCanSeeProject(
+            req.user,
+            projectCheck.rows[0].project_id,
+            projectCheck.rows[0].area,
+        );
+        if (!visible) {
+            return res.status(403).json({ error: 'Non puoi vedere i documenti di questo progetto' });
+        }
+
+        const result = await pool.query(
+            `SELECT r.resource_id as id, r.project_id as "projectId", r.title, r.url,
+                    r.created_by as "createdBy", r.created_at as "createdAt",
+                    u.name as "createdByName"
+             FROM project_resources r
+             LEFT JOIN users u ON u.user_id = r.created_by
+             WHERE r.project_id = $1
+             ORDER BY r.created_at DESC`,
+            [id],
+        );
+        res.json(result.rows);
+    } catch (error) {
+        console.error('Errore recupero risorse progetto:', error);
+        res.status(500).json({ error: 'Errore interno del server' });
+    }
+});
+
+// POST /api/projects/:id/resources
+router.post('/:id/resources', requireProjectWrite, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const title = String(req.body?.title || '').trim();
+        const url = parseHttpUrl(req.body?.url);
+
+        if (!title) return res.status(400).json({ error: 'Titolo obbligatorio' });
+        if (!url) return res.status(400).json({ error: 'URL non valido. Usa un link http o https.' });
+
+        const projectCheck = await pool.query(
+            'SELECT project_id, name FROM projects WHERE project_id = $1',
+            [id],
+        );
+        if (!projectCheck.rows.length) {
+            return res.status(404).json({ error: 'Progetto non trovato' });
+        }
+
+        const result = await pool.query(
+            `INSERT INTO project_resources (project_id, title, url, created_by)
+             VALUES ($1, $2, $3, $4)
+             RETURNING resource_id as id, project_id as "projectId", title, url,
+                       created_by as "createdBy", created_at as "createdAt"`,
+            [id, title, url, req.user.userId],
+        );
+
+        const row = result.rows[0];
+        await logProjectActivity(req.user.userId, 'resource.added', {
+            targetType: 'resource',
+            targetId: row.id,
+            projectId: id,
+            payload: {
+                fileName: title,
+                target: projectCheck.rows[0].name,
+                url,
+            },
+        });
+
+        res.status(201).json({ ...row, createdByName: req.user.name || null });
+    } catch (error) {
+        console.error('Errore creazione risorsa progetto:', error);
+        res.status(500).json({ error: 'Errore interno del server' });
+    }
+});
+
+// DELETE /api/projects/:id/resources/:resourceId
+router.delete('/:id/resources/:resourceId', requireProjectWrite, async (req, res) => {
+    try {
+        const { id, resourceId } = req.params;
+        const result = await pool.query(
+            `DELETE FROM project_resources
+             WHERE resource_id = $1 AND project_id = $2
+             RETURNING resource_id`,
+            [resourceId, id],
+        );
+        if (!result.rows.length) {
+            return res.status(404).json({ error: 'Risorsa non trovata' });
+        }
+        res.json({ message: 'Risorsa rimossa' });
+    } catch (error) {
+        console.error('Errore rimozione risorsa progetto:', error);
         res.status(500).json({ error: 'Errore interno del server' });
     }
 });

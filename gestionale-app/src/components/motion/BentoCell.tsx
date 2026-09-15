@@ -13,11 +13,11 @@ export function BentoCell({ children, className = '' }: BentoCellProps) {
     const reduced = useReducedMotion();
 
     if (reduced) {
-        return <div className={className}>{children}</div>;
+        return <div className={`h-full min-h-0 ${className}`}>{children}</div>;
     }
 
     return (
-        <motion.div className={className} variants={fadeUp}>
+        <motion.div className={`h-full min-h-0 ${className}`} variants={fadeUp}>
             {children}
         </motion.div>
     );

@@ -9,6 +9,7 @@ Questa documentazione completa copre tutti gli aspetti del sistema gestionale, d
 ### 🏠 Documentazione Principale
 
 - **[README.md](./README.md)** - Panoramica generale del sistema, architettura 3-Tier, tecnologie utilizzate e link a tutte le sezioni
+- **[aggiornamenti/REGISTRO.md](./aggiornamenti/REGISTRO.md)** - Registro numerato degli aggiornamenti (titolo + data/ora di progettazione, blueprint esaustivo per ogni numero)
 
 ### 🔧 Backend
 

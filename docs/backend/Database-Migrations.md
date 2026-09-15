@@ -26,6 +26,7 @@ Le migrazioni si trovano in `backend/database/`:
 5. **`migration_event_reports_and_polls.sql`** - Reportistica eventi e sondaggi
 6. **`migration_hr_recruiting.sql`** - Modulo HR (candidati, onboarding)
 7. **`migration_add_last_seen.sql`** - Tracking utenti online (se presente)
+8. **`migration_notifications_push.sql`** - Inbox, sottoscrizioni Web Push, preferenze
 
 ### Ordine di Esecuzione (CRITICO)
 

@@ -11,7 +11,9 @@ if (!databaseUrl) {
 
 const useSsl =
     process.env.DRIZZLE_SSL !== 'false' &&
-    (databaseUrl.includes('render.com') || process.env.NODE_ENV === 'production');
+    (databaseUrl.includes('render.com') ||
+        databaseUrl.includes('supabase.com') ||
+        process.env.NODE_ENV === 'production');
 
 export default defineConfig({
     schema: './database/drizzle/schema.js',

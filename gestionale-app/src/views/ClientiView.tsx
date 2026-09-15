@@ -1,7 +1,6 @@
 import { Trash2, Mail, Phone, Plus, Pencil } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
-import { Avatar } from '../components/ui/Avatar';
 import type { Client } from '../types/models';
 import { openNotice } from '../utils/notice';
 
@@ -28,7 +27,6 @@ export function ClientiView({ clients, onUpdateStatus, onEdit, onDelete, onOpenA
     return (
         <Card
             title={`Clienti (${clients.length})`}
-            subtitle="Gestione completa anagrafica e stato commerciale"
             headerAction={
                 <button onClick={onOpenAdd} className="btn-primary text-xs px-3 py-1.5">
                     <Plus className="w-3.5 h-3.5" /> Nuovo Cliente
@@ -62,12 +60,7 @@ export function ClientiView({ clients, onUpdateStatus, onEdit, onDelete, onOpenA
                                 onClick={() => openNotice(c.name, 'Scheda cliente: dettaglio e storico progetti in arrivo.')}
                                 className="border-b border-line/40 hover:bg-surface-inset/40 transition cursor-pointer"
                             >
-                                <td className="px-5 py-3">
-                                    <div className="flex items-center gap-3">
-                                        <Avatar name={c.name} size="sm" />
-                                        <span className="text-sm font-medium text-ink">{c.name}</span>
-                                    </div>
-                                </td>
+                                <td className="px-5 py-3 text-sm font-medium text-ink">{c.name}</td>
                                 <td className="px-5 py-3 text-sm text-ink-muted">{c.contactPerson || '—'}</td>
                                 <td className="px-5 py-3 hidden md:table-cell">
                                     <div className="flex flex-col gap-0.5 text-xs">

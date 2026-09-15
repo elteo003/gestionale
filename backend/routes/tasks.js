@@ -3,6 +3,7 @@ import pool from '../database/connection.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { isPrivileged, isSocio } from '../lib/roles.js';
 import { canEditTask, canEditProjectTasks } from '../lib/taskAccess.js';
+import { notifyTaskAssigned, scheduleNotify } from '../services/notificationService.js';
 
 const router = express.Router();
 router.use(authenticateToken);
@@ -256,6 +257,13 @@ router.post('/', async (req, res) => {
                  ON CONFLICT DO NOTHING`,
                 [task.id, ...assigneeIds]
             );
+            scheduleNotify(notifyTaskAssigned({
+                taskId: task.id,
+                projectId,
+                title,
+                actorId: req.user.userId,
+                recipientIds: assigneeIds,
+            }));
         }
 
         await pool.query(
@@ -420,6 +428,19 @@ router.post('/:id/assignees', guardTaskEdit, async (req, res) => {
              ON CONFLICT DO NOTHING`,
             [req.params.id, userId]
         );
+        const task = await pool.query(
+            'SELECT title, project_id as "projectId" FROM tasks WHERE task_id = $1',
+            [req.params.id],
+        );
+        if (userId && task.rows[0]) {
+            scheduleNotify(notifyTaskAssigned({
+                taskId: req.params.id,
+                projectId: task.rows[0].projectId,
+                title: task.rows[0].title,
+                actorId: req.user.userId,
+                recipientIds: [userId],
+            }));
+        }
         res.status(201).json({ message: 'Assegnato' });
     } catch (error) {
         console.error('Errore add assignee:', error);

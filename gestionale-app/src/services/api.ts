@@ -4,12 +4,13 @@
 import {
     apiCall as httpCall,
     getApiUrl,
+    getWsUrl,
     getSectionFromEndpoint,
     shouldUseMockData,
     ConcurrentModificationError,
 } from '../lib/api/client';
 
-export { getApiUrl, ConcurrentModificationError };
+export { getApiUrl, getWsUrl, ConcurrentModificationError };
 
 if (import.meta.env.DEV) {
     console.log('API URL:', getApiUrl());
@@ -144,6 +145,17 @@ export const projectsAPI = {
         }),
     removeTeamMember: (projectId: string, userId: string) =>
         apiCall(`/api/projects/${projectId}/team/${userId}`, {
+            method: 'DELETE',
+        }),
+    getResources: (projectId: string) =>
+        apiCall(`/api/projects/${projectId}/resources`),
+    addResource: (projectId: string, resource: { title: string; url: string }) =>
+        apiCall(`/api/projects/${projectId}/resources`, {
+            method: 'POST',
+            body: JSON.stringify(resource),
+        }),
+    removeResource: (projectId: string, resourceId: string) =>
+        apiCall(`/api/projects/${projectId}/resources/${resourceId}`, {
             method: 'DELETE',
         }),
     // Tasks Management (nuova tabella tasks)
@@ -426,11 +438,37 @@ export const timeAPI = {
 // Messages / Chat API
 export const messagesAPI = {
     getChats: () => apiCall('/api/chats'),
-    getMessages: (chatId: string) => apiCall(`/api/chats/${chatId}/messages`),
-    sendMessage: (chatId: string, body: string) =>
+    getMessages: (chatId: string, opts?: { after?: string; before?: string; limit?: number }) => {
+        const q = new URLSearchParams();
+        if (opts?.after) q.set('after', opts.after);
+        if (opts?.before) q.set('before', opts.before);
+        if (opts?.limit) q.set('limit', String(opts.limit));
+        const qs = q.toString();
+        return apiCall(`/api/chats/${chatId}/messages${qs ? `?${qs}` : ''}`);
+    },
+    sendMessage: (
+        chatId: string,
+        body: string,
+        extra?: {
+            replyToId?: string | null;
+            citedResourceId?: string | null;
+            mentionIds?: string[];
+        },
+    ) =>
         apiCall(`/api/chats/${chatId}/messages`, {
-            method: 'POST', body: JSON.stringify({ body }),
+            method: 'POST',
+            body: JSON.stringify({
+                body,
+                replyToId: extra?.replyToId || undefined,
+                citedResourceId: extra?.citedResourceId || undefined,
+                mentionIds: extra?.mentionIds?.length ? extra.mentionIds : undefined,
+            }),
         }),
+    getDocuments: (chatId: string, q?: string) => {
+        const qs = q ? `?q=${encodeURIComponent(q)}` : '';
+        return apiCall(`/api/chats/${chatId}/documents${qs}`);
+    },
+    getMembers: (chatId: string) => apiCall(`/api/chats/${chatId}/members`),
     createChat: (data: { name?: string; projectId?: string; memberIds?: string[] }) =>
         apiCall('/api/chats', { method: 'POST', body: JSON.stringify(data) }),
 };

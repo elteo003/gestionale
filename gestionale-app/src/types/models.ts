@@ -139,6 +139,37 @@ export interface Chat {
     } | null;
 }
 
+export interface MessageReply {
+    id: string;
+    author: string;
+    text: string;
+}
+
+export interface MessageCitation {
+    id: string;
+    title?: string | null;
+    url?: string | null;
+    projectName?: string | null;
+    allowed: boolean;
+}
+
+export interface CitableDocument {
+    id: string;
+    title: string;
+    url: string;
+    projectId: string;
+    projectName: string;
+    area?: string | null;
+}
+
+export interface MessageMention {
+    id: string;
+    name: string;
+    handle?: string | null;
+    color?: string | null;
+    avatarUrl?: string | null;
+}
+
 export interface Message {
     id: string;
     chatId: string;
@@ -149,4 +180,7 @@ export interface Message {
     senderColor?: string | null;
     body: string;
     createdAt: string;
+    reply?: MessageReply | null;
+    citation?: MessageCitation | null;
+    mentions?: MessageMention[];
 }

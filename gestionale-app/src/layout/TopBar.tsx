@@ -81,7 +81,7 @@ export function TopBar({ user, onLogout, onNavigate, onQuickAction }: TopBarProp
                         if (e.key === 'Enter' && results[0]) goTo(results[0].view);
                         if (e.key === 'Escape') setSearchOpen(false);
                     }}
-                    placeholder="Cerca sezioni…"
+                    placeholder="Vai a una sezione…"
                     className="search-pill pr-12"
                 />
                 <kbd

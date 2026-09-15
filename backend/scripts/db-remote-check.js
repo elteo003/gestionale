@@ -24,7 +24,9 @@ async function main() {
 
     const useSsl =
         process.env.DRIZZLE_SSL !== 'false' &&
-        (url.includes('render.com') || process.env.NODE_ENV === 'production');
+        (url.includes('render.com') ||
+            url.includes('supabase.com') ||
+            process.env.NODE_ENV === 'production');
 
     const client = new Client({
         connectionString: url,

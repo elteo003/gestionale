@@ -25,6 +25,10 @@ const MIGRATION_FILES = [
     'migration_poll_heatmap_mode.sql',
     'migration_roles_manager.sql',
     'migration_fix_polls_updated_at_triggers.sql',
+    'migration_project_resources.sql',
+    'migration_notifications_push.sql',
+    'migration_message_citations.sql',
+    'migration_message_mentions.sql',
 ];
 
 async function ensureMigrationsTable() {

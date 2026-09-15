@@ -9,7 +9,6 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { AnimatePresence, motion } from 'framer-motion';
 import { Plus, Filter, Share2, MoreHorizontal, ArrowDownWideNarrow } from 'lucide-react';
 import { TaskCard } from './TaskCard';
-import { TRANSITION } from '../../motion/presets';
 import { dropdown } from '../../motion/variants';
 import { openNotice } from '../../utils/notice';
 import type { Task, BoardColumn } from '../../types/models';
@@ -21,6 +20,8 @@ interface KanbanBoardProps {
     onAddTask?: (columnId: string) => void;
     onDeleteTask?: (taskId: string) => void;
     onSortColumnByPriority?: (columnId: string) => void;
+    banner?: string | null;
+    onShare?: () => void;
 }
 
 const columnPill = 'bg-surface-inset border-line/50';
@@ -28,7 +29,7 @@ const columnDot = 'bg-brand-500';
 const columnText = 'text-ink-muted';
 
 export function KanbanBoard({
-    columns, tasks, onMoveTask, onAddTask, onDeleteTask, onSortColumnByPriority,
+    columns, tasks, onMoveTask, onAddTask, onDeleteTask, onSortColumnByPriority, banner, onShare,
 }: KanbanBoardProps) {
     const [activeTask, setActiveTask] = useState<Task | null>(null);
 
@@ -79,10 +80,17 @@ export function KanbanBoard({
         onMoveTask(taskId, overColumnId, newPosition);
     };
 
+    const clearOverlay = () => setActiveTask(null);
+
     return (
         <section className="bento-panel overflow-hidden h-full flex flex-col">
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
-                <h3 className="text-sm font-semibold text-ink tracking-tight">Task</h3>
+                <div className="min-w-0">
+                    <h3 className="text-sm font-semibold text-ink tracking-tight">Task</h3>
+                    {banner && (
+                        <p className="mt-1 text-[11px] text-brand-300/90 truncate">{banner}</p>
+                    )}
+                </div>
                 <div className="flex items-center gap-1">
                     <button
                         type="button"
@@ -109,11 +117,10 @@ export function KanbanBoard({
                     </button>
                     <button
                         type="button"
-                        className="icon-btn"
-                        aria-label="Condividi board"
-                        onClick={() => openNotice('Condividi', 'Link al board in preparazione.')}
+                        className="btn-soft text-xs !px-3 !py-1.5"
+                        onClick={() => onShare?.()}
                     >
-                        <Share2 className="w-4 h-4" />
+                        <Share2 className="w-3.5 h-3.5" /> Condividi
                     </button>
                     <button
                         type="button"
@@ -131,6 +138,7 @@ export function KanbanBoard({
                     collisionDetection={closestCorners}
                     onDragStart={handleDragStart}
                     onDragEnd={handleDragEnd}
+                    onDragCancel={clearOverlay}
                 >
                     <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin h-full">
                         {columns.map(col => (
@@ -145,12 +153,12 @@ export function KanbanBoard({
                         ))}
                     </div>
                     {createPortal(
-                        <DragOverlay dropAnimation={{ duration: 180, easing: 'ease-out' }}>
-                            {activeTask && (
-                                <div className="w-[17rem]">
+                        <DragOverlay dropAnimation={null} zIndex={1000}>
+                            {activeTask ? (
+                                <div className="w-full pointer-events-none">
                                     <TaskCard task={activeTask} isOverlay />
                                 </div>
-                            )}
+                            ) : null}
                         </DragOverlay>,
                         document.body,
                     )}
@@ -258,13 +266,8 @@ function KanbanColumn({
                 </div>
             </div>
 
-            <motion.div
-                className="kanban-well space-y-2 flex-1 overflow-y-auto scrollbar-thin"
-                animate={{
-                    borderColor: isOver ? 'rgba(26, 122, 85, 0.4)' : 'rgba(var(--line) / 0.5)',
-                    backgroundColor: isOver ? 'rgba(26, 122, 85, 0.06)' : 'rgb(var(--surface-inset) / 0.5)',
-                }}
-                transition={TRANSITION.fast}
+            <div
+                className={`kanban-well space-y-2 flex-1 overflow-y-auto scrollbar-thin${isOver ? ' kanban-well--over' : ''}`}
             >
                 <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
                     {tasks.map(t => (
@@ -276,7 +279,7 @@ function KanbanColumn({
                         Trascina qui i task
                     </p>
                 )}
-            </motion.div>
+            </div>
         </div>
     );
 }

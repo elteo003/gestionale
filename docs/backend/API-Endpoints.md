@@ -1024,6 +1024,79 @@ graph TD
 
 ---
 
+## Modulo: Notifiche push (web + desktop)
+
+Un solo inbox e lo stesso protocollo Web Push (VAPID) per browser e Electron (`platform`: `web` | `desktop`). Dettaglio di progetto: `docs/aggiornamenti/002-notifiche-push-web-desktop.md`.
+
+### GET /api/push/vapid-public-key
+
+**Autenticazione**: Richiesta
+
+**Response Success (200)**: `{ "publicKey": "BNxxxx..." }`
+
+**Response Error (503)**: `{ "error": "Push non configurato" }` — mancano `VAPID_*`.
+
+### POST /api/push/subscribe
+
+**Autenticazione**: Richiesta
+
+**Request Body**:
+```json
+{
+  "platform": "web",
+  "endpoint": "https://fcm.googleapis.com/fcm/send/...",
+  "expirationTime": null,
+  "keys": { "p256dh": "...", "auth": "..." }
+}
+```
+
+`platform` può essere `desktop` per Electron. Stesso endpoint viene aggiornato (re-login).
+
+**Response Success (201)**: `{ "id", "platform", "endpoint", "createdAt" }`
+
+### DELETE /api/push/subscribe
+
+**Request Body**: `{ "endpoint": "https://..." }`
+
+### GET /api/notifications
+
+Query: `unread=1`, `limit` (1–100, default 50).
+
+**Response Success (200)**: array di `{ id, type, title, body, payload, actorId, collapseKey, readAt, createdAt }`
+
+Tipi v1: `chat.message`, `task.assigned`, `event.invited`.
+
+### GET /api/notifications/unread-count
+
+**Response Success (200)**: `{ "count": 3 }`
+
+### PATCH /api/notifications/:id/read
+
+**Response Success (200)**: `{ "id", "readAt" }`
+
+### POST /api/notifications/read-all
+
+**Response Success (200)**: `{ "updated": 3 }`
+
+### GET /api/notifications/preferences
+
+**Response Success (200)**:
+```json
+{
+  "settings": {
+    "chat.message": true,
+    "task.assigned": true,
+    "event.invited": true
+  }
+}
+```
+
+### PATCH /api/notifications/preferences
+
+**Request Body**: `{ "settings": { "chat.message": false } }` — merge sulle chiavi note.
+
+---
+
 ## Error Handling Standard
 
 ### 400 Bad Request

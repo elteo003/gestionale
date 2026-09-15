@@ -1,7 +1,8 @@
 import { CheckSquare, Calendar, MoreHorizontal, Trash2 } from 'lucide-react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { useState } from 'react';
+import type { DraggableAttributes, DraggableSyntheticListeners } from '@dnd-kit/core';
+import { useState, type CSSProperties } from 'react';
 import { AvatarGroup } from '../ui/AvatarGroup';
 import { PriorityBadge } from '../ui/PriorityBadge';
 import { openNotice } from '../../utils/notice';
@@ -23,21 +24,58 @@ function formatRange(start?: string | null, due?: string | null) {
 }
 
 export function TaskCard({ task, isOverlay = false, onDelete }: TaskCardProps) {
+    if (isOverlay) {
+        return <TaskCardFace task={task} isOverlay />;
+    }
+    return <SortableTaskCard task={task} onDelete={onDelete} />;
+}
+
+function SortableTaskCard({ task, onDelete }: { task: Task; onDelete?: (id: string) => void }) {
     const [hovered, setHovered] = useState(false);
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
         id: task.id,
         data: { type: 'task', task },
-        disabled: isOverlay,
     });
 
-    const style = isOverlay
-        ? undefined
-        : {
-            transform: CSS.Translate.toString(transform),
-            transition,
-            opacity: isDragging ? 0.4 : 1,
-        };
+    return (
+        <TaskCardFace
+            task={task}
+            onDelete={onDelete}
+            hovered={hovered}
+            onHoverChange={setHovered}
+            innerRef={setNodeRef}
+            style={{
+                transform: CSS.Translate.toString(transform),
+                transition,
+                opacity: isDragging ? 0 : 1,
+            }}
+            listeners={listeners}
+            attributes={attributes}
+        />
+    );
+}
 
+function TaskCardFace({
+    task,
+    isOverlay = false,
+    onDelete,
+    hovered = false,
+    onHoverChange,
+    innerRef,
+    style,
+    listeners,
+    attributes,
+}: {
+    task: Task;
+    isOverlay?: boolean;
+    onDelete?: (id: string) => void;
+    hovered?: boolean;
+    onHoverChange?: (hovered: boolean) => void;
+    innerRef?: (node: HTMLElement | null) => void;
+    style?: CSSProperties;
+    listeners?: DraggableSyntheticListeners;
+    attributes?: DraggableAttributes;
+}) {
     const done = task.subtasks.filter(s => s.completed).length;
     const range = formatRange(task.startDate, task.dueDate);
     const subtitle = task.sprintName
@@ -45,14 +83,22 @@ export function TaskCard({ task, isOverlay = false, onDelete }: TaskCardProps) {
         : (task.projectName || 'Progetto');
 
     const cardClass = [
-        'group bento-panel--task p-3.5 cursor-grab active:cursor-grabbing select-none',
+        'group bento-panel--task p-3.5 select-none',
         isOverlay
-            ? 'shadow-raised ring-1 ring-brand-600/35'
-            : 'hover:border-brand-600/25 transition-colors',
+            ? 'shadow-raised ring-1 ring-brand-600/35 cursor-grabbing'
+            : 'cursor-grab active:cursor-grabbing hover:border-brand-600/25 transition-colors',
     ].join(' ');
 
-    const body = (
-        <>
+    return (
+        <div
+            ref={innerRef}
+            style={style}
+            className={cardClass}
+            {...(attributes ?? {})}
+            {...(listeners ?? {})}
+            onMouseEnter={() => onHoverChange?.(true)}
+            onMouseLeave={() => onHoverChange?.(false)}
+        >
             <div className="flex items-start justify-between gap-2 mb-1">
                 <h4 className="text-sm font-semibold text-ink leading-snug truncate">
                     {task.title}
@@ -71,17 +117,19 @@ export function TaskCard({ task, isOverlay = false, onDelete }: TaskCardProps) {
                             <Trash2 className="w-3 h-3" />
                         </button>
                     )}
-                    <button
-                        type="button"
-                        className="icon-btn !w-6 !h-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            openNotice(task.title, 'Dettaglio task in arrivo.');
-                        }}
-                        aria-label="Più opzioni"
-                    >
-                        <MoreHorizontal className="w-3 h-3" />
-                    </button>
+                    {!isOverlay && (
+                        <button
+                            type="button"
+                            className="icon-btn !w-6 !h-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                openNotice(task.title, 'Dettaglio task in arrivo.');
+                            }}
+                            aria-label="Più opzioni"
+                        >
+                            <MoreHorizontal className="w-3 h-3" />
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -112,19 +160,6 @@ export function TaskCard({ task, isOverlay = false, onDelete }: TaskCardProps) {
                     </span>
                 </div>
             )}
-        </>
-    );
-
-    return (
-        <div
-            ref={isOverlay ? undefined : setNodeRef}
-            style={style}
-            {...(isOverlay ? {} : { ...attributes, ...listeners })}
-            className={cardClass}
-            onMouseEnter={() => setHovered(true)}
-            onMouseLeave={() => setHovered(false)}
-        >
-            {body}
         </div>
     );
 }

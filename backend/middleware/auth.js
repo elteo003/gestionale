@@ -30,12 +30,32 @@ async function loadUser(decoded) {
     };
 }
 
-function verifyTokenString(token) {
+export function verifyTokenString(token) {
     try {
         return verifyAccessToken(token);
     } catch {
         return verifyAnyAccessToken(token);
     }
+}
+
+export async function userFromAccessToken(token) {
+    if (!token) return null;
+    const decoded = verifyTokenString(token);
+    return loadUser(decoded);
+}
+
+export function tokenFromCookieHeader(cookieHeader) {
+    if (!cookieHeader) return null;
+    for (const part of cookieHeader.split(';')) {
+        const trimmed = part.trim();
+        const eq = trimmed.indexOf('=');
+        if (eq < 1) continue;
+        const key = trimmed.slice(0, eq);
+        if (key === 'access_token') {
+            return decodeURIComponent(trimmed.slice(eq + 1));
+        }
+    }
+    return null;
 }
 
 export const authenticateToken = async (req, res, next) => {

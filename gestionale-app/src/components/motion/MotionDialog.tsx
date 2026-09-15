@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { fade, scaleIn } from '../../motion/variants';
 import { useReducedMotion } from '../../motion/useReducedMotion';
 
@@ -15,11 +16,27 @@ interface MotionDialogProps {
 export function MotionDialog({ open, onClose, children, className = '', labelledBy }: MotionDialogProps) {
     const reduced = useReducedMotion();
 
-    return (
+    useEffect(() => {
+        if (!open) return;
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onClose();
+        };
+        const previousOverflow = document.body.style.overflow;
+        document.addEventListener('keydown', onKey);
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.removeEventListener('keydown', onKey);
+            document.body.style.overflow = previousOverflow;
+        };
+    }, [open, onClose]);
+
+    if (typeof document === 'undefined') return null;
+
+    return createPortal(
         <AnimatePresence>
             {open && (
                 <div
-                    className="fixed inset-0 z-[70] flex items-center justify-center px-4"
+                    className="fixed inset-0 z-[80] flex items-center justify-center px-4 py-6"
                     role="dialog"
                     aria-modal="true"
                     aria-labelledby={labelledBy}
@@ -47,6 +64,7 @@ export function MotionDialog({ open, onClose, children, className = '', labelled
                     </motion.div>
                 </div>
             )}
-        </AnimatePresence>
+        </AnimatePresence>,
+        document.body,
     );
 }

@@ -5,38 +5,46 @@ import { BentoCell } from '../motion/BentoCell';
 import { MotionDialog } from '../motion/MotionDialog';
 import { bentoStagger } from '../../motion/variants';
 import { useReducedMotion } from '../../motion/useReducedMotion';
-import { TimeSheet } from './TimeSheet';
-import { SprintVelocity } from './SprintVelocity';
-import { ActivityFeed } from './ActivityFeed';
-import { CalendarMini } from './CalendarMini';
-import { ChatDetails } from './ChatDetails';
-import { Plus, X, Sparkles } from 'lucide-react';
+import { ShareProjectDialog, SHARE_PROJECT_EVENT, SHARE_PROJECT_FLAG } from './ShareProjectDialog';
+import { TodayRail } from './TodayRail';
+import { Plus, X } from 'lucide-react';
 import { openNotice } from '../../utils/notice';
+import { resolvePermissions } from '../../lib/permissions';
 import {
-    tasksAPI, sprintsAPI, activitiesAPI, timeAPI,
+    tasksAPI, sprintsAPI, activitiesAPI,
     eventsAPI, usersAPI,
 } from '../../services/api';
 import type {
-    Task, BoardColumn, Sprint, Activity, TimeEntrySummary,
-    User,
+    Task, BoardColumn, Sprint, Activity,
+    User, Project,
 } from '../../types/models';
 
 interface DashboardViewProps {
     activeProjectId: string | null;
     currentUser: User | null;
+    projects?: Project[];
 }
 
-export function DashboardView({ activeProjectId, currentUser }: DashboardViewProps) {
+export function DashboardView({ activeProjectId, currentUser, projects = [] }: DashboardViewProps) {
     const [columns, setColumns] = useState<BoardColumn[]>([]);
     const [tasks, setTasks] = useState<Task[]>([]);
     const [hasRealTasks, setHasRealTasks] = useState(false);
     const [activeSprint, setActiveSprint] = useState<Sprint | null>(null);
     const [activities, setActivities] = useState<Activity[]>([]);
-    const [timeSummary, setTimeSummary] = useState<TimeEntrySummary[]>([]);
-    const [events, setEvents] = useState<any[]>([]);
+    const [events, setEvents] = useState<{ id: string; title: string; startTime: string; endTime?: string }[]>([]);
     const [members, setMembers] = useState<User[]>([]);
-    const [selectedDate, setSelectedDate] = useState(new Date());
     const [taskComposerColumnId, setTaskComposerColumnId] = useState<string | null>(null);
+    const [shareOpen, setShareOpen] = useState(false);
+
+    useEffect(() => {
+        const openShare = () => {
+            sessionStorage.removeItem(SHARE_PROJECT_FLAG);
+            setShareOpen(true);
+        };
+        if (sessionStorage.getItem(SHARE_PROJECT_FLAG) === '1') openShare();
+        window.addEventListener(SHARE_PROJECT_EVENT, openShare);
+        return () => window.removeEventListener(SHARE_PROJECT_EVENT, openShare);
+    }, []);
 
     useEffect(() => {
         let cancelled = false;
@@ -47,12 +55,14 @@ export function DashboardView({ activeProjectId, currentUser }: DashboardViewPro
                     try { return await p; } catch { return fb; }
                 };
 
-                const [colsRaw, tasksRaw, sprint, acts, sum, evs, users] = await Promise.all([
+                const [colsRaw, tasksRaw, sprint, acts, evs, users] = await Promise.all([
                     activeProjectId ? safe(tasksAPI.getColumns(activeProjectId), []) : Promise.resolve([]),
                     safe(tasksAPI.getAll(activeProjectId ? { projectId: activeProjectId } : {}), []),
                     safe(sprintsAPI.getActive(activeProjectId || undefined), null),
-                    safe(activitiesAPI.getAll({ limit: 20 }), []),
-                    safe(timeAPI.summary('month'), []),
+                    safe(activitiesAPI.getAll({
+                        projectId: activeProjectId || undefined,
+                        limit: 20,
+                    }), []),
                     safe(eventsAPI.getAll({}), []),
                     safe(usersAPI.getAll(), []),
                 ]);
@@ -79,8 +89,7 @@ export function DashboardView({ activeProjectId, currentUser }: DashboardViewPro
                 setTasks(hydratedTasks);
                 setActiveSprint(sprint as Sprint | null);
                 setActivities(acts as Activity[]);
-                setTimeSummary(sum as TimeEntrySummary[]);
-                setEvents(evs as any[]);
+                setEvents(evs as { id: string; title: string; startTime: string; endTime?: string }[]);
                 setMembers(users as User[]);
             } catch (err) {
                 console.error('Errore loading dashboard:', err);
@@ -96,9 +105,6 @@ export function DashboardView({ activeProjectId, currentUser }: DashboardViewPro
     const useDemoFallback = !import.meta.env.PROD;
     const displayActivities =
         activities.length ? activities : useDemoFallback ? mockActivities(members) : [];
-    const displayTimeSummary =
-        timeSummary.length ? timeSummary : useDemoFallback ? mockTimeSummary(members) : [];
-    const displaySprint = activeSprint || (useDemoFallback ? mockSprint : null);
     const displayEvents = events.length ? events : useDemoFallback ? mockEvents() : [];
 
     const handleMoveTask = async (taskId: string, targetColumnId: string, targetPosition: number) => {
@@ -227,25 +233,25 @@ export function DashboardView({ activeProjectId, currentUser }: DashboardViewPro
 
     const cols = columns.length ? columns : DEFAULT_COLUMNS;
     const showPreview = useDemoFallback && (!hasRealTasks || !activities.length);
-    const sprintHistory = useDemoFallback && displaySprint
-        ? [
-            { label: 'Gen', value: 72 },
-            { label: 'Feb', value: 81 },
-            { label: 'Mar', value: 76 },
-            { label: 'Apr', value: Math.min(100, Math.round((displaySprint.completedPoints / Math.max(1, displaySprint.targetPoints)) * 100)) },
-        ]
-        : [];
+    const projectName = projects.find((p) => p.id === activeProjectId)?.name || 'Progetto';
+    const canManageShare = resolvePermissions(currentUser).manageProjects;
+
+    const reloadActivities = async () => {
+        try {
+            const acts = await activitiesAPI.getAll({
+                projectId: activeProjectId || undefined,
+                limit: 20,
+            });
+            setActivities(acts as Activity[]);
+        } catch {
+            /* keep current feed */
+        }
+    };
 
     const reducedMotion = useReducedMotion();
 
     return (
         <>
-        {showPreview && (
-            <div className="preview-banner" role="status">
-                <Sparkles className="w-3.5 h-3.5 flex-shrink-0" />
-                <span>Anteprima — dati dimostrativi finché il progetto non ha contenuti reali.</span>
-            </div>
-        )}
         <motion.div
             className="dashboard-bento"
             variants={reducedMotion ? undefined : bentoStagger}
@@ -259,8 +265,20 @@ export function DashboardView({ activeProjectId, currentUser }: DashboardViewPro
                     onMoveTask={handleMoveTask}
                     onAddTask={handleAddTask}
                     onSortColumnByPriority={handleSortColumnByPriority}
+                    banner={showPreview ? 'Anteprima: dati dimostrativi finché il progetto non ha contenuti reali.' : null}
+                    onShare={() => setShareOpen(true)}
                 />
             </BentoCell>
+
+            <ShareProjectDialog
+                open={shareOpen}
+                onClose={() => setShareOpen(false)}
+                projectId={activeProjectId}
+                projectName={projectName}
+                canManage={canManageShare}
+                currentUser={currentUser}
+                onChanged={reloadActivities}
+            />
 
             <TaskComposerDialog
                 open={!!taskComposerColumnId}
@@ -272,30 +290,7 @@ export function DashboardView({ activeProjectId, currentUser }: DashboardViewPro
             />
 
             <BentoCell className="bento-activity">
-                <ActivityFeed activities={displayActivities} />
-            </BentoCell>
-
-            <BentoCell className="bento-timesheet">
-                <TimeSheet summary={displayTimeSummary} period="month" />
-            </BentoCell>
-
-            <BentoCell className="bento-velocity">
-                <SprintVelocity sprint={displaySprint} history={sprintHistory} />
-            </BentoCell>
-
-            <BentoCell className="bento-calendar">
-                <CalendarMini
-                    events={displayEvents}
-                    selectedDate={selectedDate}
-                    onSelectDate={setSelectedDate}
-                />
-            </BentoCell>
-
-            <BentoCell className="bento-chat">
-                <ChatDetails
-                    members={members}
-                    onOpen={() => openNotice('Chat di progetto', 'Messaggi e file condivisi in arrivo.')}
-                />
+                <TodayRail activities={displayActivities} events={displayEvents} />
             </BentoCell>
         </motion.div>
         </>
@@ -482,37 +477,6 @@ function mockActivities(members: User[]): Activity[] {
         },
     ] as Activity[];
 }
-
-function mockTimeSummary(members: User[]): TimeEntrySummary[] {
-    const team = members.length ? members : mockMembers;
-    const order = ['Marco Rossi', 'Laura Bianchi', 'Giulia Verdi', 'Paolo Neri'];
-    const sorted = order
-        .map(n => team.find(u => u.name === n))
-        .concat(team)
-        .filter((u, i, arr): u is User => Boolean(u) && arr.findIndex(x => x?.id === u?.id) === i);
-
-    return sorted.slice(0, 4).map((u, i) => ({
-        id: u.id,
-        name: u.name,
-        avatarUrl: u.avatarUrl,
-        handle: u.handle,
-        color: u.color,
-        totalHours: [0.5, 0.35, 0.28, 0.18][i] ?? 0.15,
-        entryCount: 14 - i * 2,
-    }));
-}
-
-const mockSprint: Sprint = {
-    id: 'sprint-mock',
-    projectId: null,
-    name: 'Sprint 2 · Design',
-    goal: 'Completare dashboard',
-    startDate: new Date().toISOString().split('T')[0],
-    endDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 14).toISOString().split('T')[0],
-    targetPoints: 100,
-    completedPoints: 87,
-    status: 'active',
-};
 
 function mockEvents() {
     const today = new Date();

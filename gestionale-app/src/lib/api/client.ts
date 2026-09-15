@@ -8,6 +8,10 @@ export function getApiUrl(): string {
     return url.replace(/\/+$/, '');
 }
 
+export function getWsUrl(): string {
+    return `${getApiUrl().replace(/^http/i, 'ws')}/ws`;
+}
+
 export function getSectionFromEndpoint(endpoint: string): ApiSection | undefined {
     if (endpoint.includes('/api/auth')) return undefined;
     if (endpoint.includes('/api/clients')) return 'clients';

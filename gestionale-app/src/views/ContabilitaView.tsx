@@ -1,6 +1,5 @@
-import { Trash2, Plus, FileText, Receipt, FileSignature, Pencil } from 'lucide-react';
+import { Trash2, Plus, FileText, Receipt, FileSignature, Pencil, Wallet, Clock } from 'lucide-react';
 import { Card } from '../components/ui/Card';
-import { Badge } from '../components/ui/Badge';
 import type { Contract } from '../types/models';
 import { openNotice } from '../utils/notice';
 
@@ -46,14 +45,13 @@ export function ContabilitaView({
     return (
         <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <KpiCard label="Totale Documenti" value={fmtAmount(totals.total)} tone="violet" />
-                <KpiCard label="Già Incassato"     value={fmtAmount(totals.paid)}  tone="emerald" />
-                <KpiCard label="Da Incassare"      value={fmtAmount(totals.due)}   tone="amber" />
+                <KpiCard label="Totale" value={fmtAmount(totals.total)} icon={FileText} tone="brand" />
+                <KpiCard label="Incassato" value={fmtAmount(totals.paid)} icon={Wallet} tone="emerald" />
+                <KpiCard label="Da incassare" value={fmtAmount(totals.due)} icon={Clock} tone="amber" />
             </div>
 
             <Card
                 title={`Documenti (${contracts.length})`}
-                subtitle="Contratti, fatture e preventivi"
                 headerAction={
                     <button onClick={onOpenAdd} className="btn-primary text-xs px-3 py-1.5">
                         <Plus className="w-3.5 h-3.5" /> Nuovo Documento
@@ -150,40 +148,31 @@ export function ContabilitaView({
     );
 }
 
-const kpiAccent: Record<string, string> = {
-    violet: 'bg-grad-brand',
-    brand: 'bg-grad-brand',
-    emerald: 'bg-grad-emerald',
-    amber: 'bg-amber-500/80',
+const kpiIconWrap: Record<string, string> = {
+    brand: 'bg-grad-brand text-white',
+    emerald: 'bg-emerald-500/20 text-emerald-300',
+    amber: 'bg-amber-500/20 text-amber-300',
 };
 
-function KpiCard({ label, value, tone }: { label: string; value: string; tone: string }) {
-    const accentClass = kpiAccent[tone] || 'bg-grad-brand';
-
+function KpiCard({
+    label, value, tone, icon: Icon,
+}: {
+    label: string;
+    value: string;
+    tone: string;
+    icon: typeof FileText;
+}) {
     return (
-        <Card
-            padding="lg"
-            headerAction={null}
-            role="button"
-            tabIndex={0}
-            onClick={() => openNotice(label, `Valore corrente: ${value}`)}
-            onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                    openNotice(label, `Valore corrente: ${value}`);
-                }
-            }}
-            className="cursor-pointer transition-transform active:scale-[0.99]"
-        >
+        <div className="card p-5">
             <div className="flex items-start gap-3">
-                <span className={`w-10 h-10 rounded-xl ${accentClass} shadow-soft`} />
-                <div>
+                <span className={`inline-flex w-10 h-10 rounded-xl items-center justify-center flex-shrink-0 ${kpiIconWrap[tone] || kpiIconWrap.brand}`}>
+                    <Icon className="w-5 h-5" />
+                </span>
+                <div className="min-w-0">
                     <p className="text-[11px] uppercase tracking-wider text-ink-subtle font-medium">{label}</p>
-                    <p className="text-2xl font-bold text-ink tabular-nums mt-1">{value}</p>
+                    <p className="text-2xl font-bold text-ink tabular-nums mt-1 leading-tight">{value}</p>
                 </div>
             </div>
-            <Badge tone={(tone === 'amber' || tone === 'emerald' ? tone : 'violet') as 'violet' | 'emerald' | 'amber'} className="mt-3">
-                <span className="opacity-90">questo periodo</span>
-            </Badge>
-        </Card>
+        </div>
     );
 }
