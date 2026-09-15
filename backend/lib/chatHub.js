@@ -20,6 +20,9 @@ function allowedOrigins() {
 
 export function originAllowed(origin) {
     if (!origin) return true;
+    if (origin === 'file://' || origin.startsWith('file://') || origin.startsWith('jeins:')) {
+        return true;
+    }
     if (allowedOrigins().includes(origin)) return true;
     return process.env.NODE_ENV !== 'production';
 }

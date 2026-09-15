@@ -38,7 +38,7 @@ export async function ensurePushSubscription(): Promise<PushSubscribeResult> {
     if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) return 'unavailable';
 
     await notificationsAPI.subscribePush({
-        platform: 'web',
+        platform: window.jeins?.isDesktop ? 'desktop' : 'web',
         endpoint: json.endpoint,
         expirationTime: json.expirationTime ?? null,
         keys: {

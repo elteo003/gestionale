@@ -184,6 +184,13 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         return () => navigator.serviceWorker.removeEventListener('message', onMessage);
     }, [ingestFrame, navigate]);
 
+    useEffect(() => {
+        const off = window.jeins?.onNavigate?.((url) => {
+            if (url) navigate(url);
+        });
+        return () => { off?.(); };
+    }, [navigate]);
+
     const value = useMemo(
         () => ({ unread, items, refresh, markRead, markAllRead }),
         [unread, items, refresh, markRead, markAllRead],

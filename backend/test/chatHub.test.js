@@ -53,10 +53,14 @@ describe('chat hub', () => {
         assert.equal(frame.payload.body, 'ciao');
     });
 
-    it('originAllowed accetta localhost in dev', () => {
+    it('originAllowed accetta localhost in dev e file:// in produzione', () => {
         const prev = process.env.NODE_ENV;
         process.env.NODE_ENV = 'development';
         assert.equal(originAllowed('http://localhost:5173'), true);
+        const prevProd = process.env.NODE_ENV;
+        process.env.NODE_ENV = 'production';
+        assert.equal(originAllowed('file://'), true);
+        process.env.NODE_ENV = prevProd;
         process.env.NODE_ENV = prev;
     });
 

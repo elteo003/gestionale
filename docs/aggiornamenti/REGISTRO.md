@@ -2,10 +2,11 @@
 
 Ogni riga è un progetto chiuso o in corso. Il **numero** è nel titolo del blueprint. **Data e ora** di progettazione (e, a valle, di implementazione) stanno qui e nel documento di progetto, fuso `Europe/Rome`.
 
-Prossimo numero libero: **007**.
+Prossimo numero libero: **008**.
 
 | # | Titolo | Progettato | Implementato | Stato | Blueprint |
 |---|--------|------------|--------------|-------|-----------|
+| 007 | Client Electron: toast di sistema e installer | 2026-09-15 13:05 | 2026-09-15 13:10 | implementato | [007-electron-installer-push-sistema.md](./007-electron-installer-push-sistema.md) |
 | 006 | Motion fluido: un clock, solo composite | 2026-09-15 12:39 | 2026-09-15 12:45 | implementato | [006-motion-fluido-composite.md](./006-motion-fluido-composite.md) |
 | 005 | Client notifiche: campanella, push, chat / lavori / call | 2026-09-15 12:34 | 2026-09-15 12:40 | implementato | [005-frontend-notifiche-push.md](./005-frontend-notifiche-push.md) |
 | 004 | Rispondi vs @cita persone in chat | 2026-09-15 12:00 | 2026-09-15 12:09 | implementato | [004-rispondi-e-menzione-chiocciola.md](./004-rispondi-e-menzione-chiocciola.md) |

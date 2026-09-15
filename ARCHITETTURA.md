@@ -154,7 +154,7 @@ Documentazione operativa: `docs/RBAC.md`, `docs/INDEX.md`.
 - `GET /api/users/:id` - Dettaglio utente
 
 ### Notifiche (web + desktop)
-Stesso inbox e stesso protocollo Web Push (VAPID). Electron si registra con `platform: "desktop"`.
+Stesso inbox e stesso protocollo Web Push (VAPID). Il browser usa il Service Worker; il client Electron (`desktop/`) resta in tray, tiene un WebSocket autenticato nel main process e mostra toast nativi di sistema (`AppUserModelId` = `it.jeins.gestionale`). Electron si registra anche con `platform: "desktop"` se il SW è disponibile.
 - `GET /api/notifications` - Inbox (`?unread=1&limit=50`)
 - `GET /api/notifications/unread-count`
 - `PATCH /api/notifications/:id/read`

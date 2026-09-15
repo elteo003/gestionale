@@ -45,3 +45,5 @@ gestionale-app/playwright-report/
 # Electron
 desktop/release/
 desktop/renderer/
+!desktop/build/
+!desktop/build/icon.png

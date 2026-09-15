@@ -1,0 +1,79 @@
+{
+  "name": "gestionale-jeins-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "author": "JEINS",
+  "description": "Client desktop Gestionale JEINS",
+  "main": "src/main.mjs",
+  "type": "module",
+  "scripts": {
+    "dev": "electron .",
+    "build:renderer": "npm run build:desktop --prefix ../gestionale-app && node src/copy-renderer.mjs",
+    "dist:win": "npm run build:renderer && electron-builder --win nsis",
+    "dist:mac": "npm run build:renderer && electron-builder --mac dmg",
+    "dist:linux": "npm run build:renderer && electron-builder --linux AppImage"
+  },
+  "dependencies": {
+    "ws": "^8.21.3"
+  },
+  "devDependencies": {
+    "electron": "^37.2.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "it.jeins.gestionale",
+    "productName": "Gestionale JEINS",
+    "copyright": "JEINS",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "renderer",
+        "to": "renderer"
+      },
+      {
+        "from": "build/icon.png",
+        "to": "icon.png"
+      }
+    ],
+    "win": {
+      "icon": "build/icon.png",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Gestionale JEINS"
+    },
+    "mac": {
+      "icon": "build/icon.png",
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.business"
+    },
+    "linux": {
+      "icon": "build/icon.png",
+      "target": [
+        "AppImage"
+      ],
+      "category": "Office"
+    }
+  }
+}

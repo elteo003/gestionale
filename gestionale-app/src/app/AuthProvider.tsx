@@ -23,6 +23,11 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+function syncDesktopToken() {
+    const token = localStorage.getItem('token');
+    if (token) void window.jeins?.setAuthToken?.(token);
+}
+
 async function resolveCurrentUser(fallback: User): Promise<User> {
     try {
         return await usersAPI.getMe();
@@ -48,6 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const me = await resolveCurrentUser(res.user);
             setUser(me);
             localStorage.setItem('user', JSON.stringify(me));
+            syncDesktopToken();
             return true;
         } catch {
             try {
@@ -56,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 if (refreshed.token) localStorage.setItem('token', refreshed.token);
                 setUser(me);
                 localStorage.setItem('user', JSON.stringify(me));
+                syncDesktopToken();
                 return true;
             } catch {
                 clearAuthSession();
@@ -84,6 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const me = await resolveCurrentUser(data);
         setUser(me);
         localStorage.setItem('user', JSON.stringify(me));
+        syncDesktopToken();
     }, []);
 
     const logout = useCallback(async () => {

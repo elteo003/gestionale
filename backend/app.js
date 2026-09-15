@@ -38,6 +38,9 @@ function buildCorsOptions() {
     return {
         origin: (origin, cb) => {
             if (!origin) return cb(null, true);
+            if (origin === 'file://' || origin.startsWith('file://') || origin.startsWith('jeins:')) {
+                return cb(null, true);
+            }
             if (allowedOrigins.includes(origin)) return cb(null, true);
             if (isProduction) {
                 console.warn('CORS rifiutato:', origin);

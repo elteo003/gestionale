@@ -1,8 +1,10 @@
 export type ApiSection = 'dashboard' | 'clients' | 'projects' | 'contracts' | 'events';
 
 export function getApiUrl(): string {
+    const desktopUrl = typeof window !== 'undefined' ? window.jeins?.apiUrl : undefined;
     const url =
-        localStorage.getItem('customApiUrl') ||
+        (typeof localStorage !== 'undefined' && localStorage.getItem('customApiUrl')) ||
+        desktopUrl ||
         import.meta.env.VITE_API_URL ||
         'http://localhost:3000';
     return url.replace(/\/+$/, '');
@@ -38,6 +40,7 @@ export function shouldUseMockData(section?: ApiSection, endpoint?: string): bool
 export function clearAuthSession(): void {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    window.jeins?.clearAuth?.();
 }
 
 export function notifyUnauthorized(): void {
