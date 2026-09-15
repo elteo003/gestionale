@@ -2,10 +2,11 @@
 
 Ogni riga è un progetto chiuso o in corso. Il **numero** è nel titolo del blueprint. **Data e ora** di progettazione (e, a valle, di implementazione) stanno qui e nel documento di progetto, fuso `Europe/Rome`.
 
-Prossimo numero libero: **012**.
+Prossimo numero libero: **013**.
 
 | # | Titolo | Progettato | Implementato | Stato | Blueprint |
 |---|--------|------------|--------------|-------|-----------|
+| 012 | Render: `npm run build` deve esistere | 2026-09-15 15:55 | 2026-09-15 15:56 | implementato | [012-render-script-build.md](./012-render-script-build.md) |
 | 011 | Chrome laterale unico; dropdown a clip dal trigger | 2026-09-15 15:32 | 2026-09-15 15:34 | implementato | [011-chrome-unico-dropdown-clip.md](./011-chrome-unico-dropdown-clip.md) |
 | 010 | Dropdown: fuori dal glass, curva e viaggio visibili | 2026-09-15 15:13 | 2026-09-15 15:16 | implementato | [010-dropdown-portal-curva.md](./010-dropdown-portal-curva.md) |
 | 009 | Dropdown: transizione CSS dal trigger, non uno scatto | 2026-09-15 15:06 | 2026-09-15 15:12 | implementato | [009-dropdown-css-interruptibile.md](./009-dropdown-css-interruptibile.md) |
